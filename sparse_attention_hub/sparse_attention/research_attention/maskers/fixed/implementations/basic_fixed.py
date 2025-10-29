@@ -221,6 +221,7 @@ class LocalMasker(FixedMasker):
         self, dims: AttentionTensorDimensions, window_size: int
     ) -> bool:
         """Determine if full attention should be used instead of local attention."""
+        # import pdb; pdb.set_trace()
         return dims.seq_len_keys <= window_size + dims.seq_len_queries
 
     def _create_local_mask(

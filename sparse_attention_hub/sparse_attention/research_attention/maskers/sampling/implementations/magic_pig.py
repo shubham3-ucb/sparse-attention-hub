@@ -135,7 +135,9 @@ class MagicPig(SamplingMasker):
         """Computes signatures for given vectors, with optional packing."""
         total_bits: int = self.lsh_l * self.lsh_k
         batch_size, num_heads, seq_len, head_dim = vectors.shape
-        vectors_flat: torch.Tensor = vectors.view(-1, head_dim)
+        # Use reshape instead of view to handle non-contiguous tensors safely
+        # vectors_flat: torch.Tensor = vectors.view(-1, head_dim)
+        vectors_flat: torch.Tensor = vectors.reshape(-1, head_dim)
         projection = sparse_meta_data["projections"][layer_idx]
 
         # 1. Compute signs (+1/-1)

@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from torch import nn
+import os
 
 from sparse_attention_hub.metric_logging.logger import MicroMetricLogger
 
@@ -98,8 +99,23 @@ class ResearchAttention(SparseAttention):
             mask_shape, dtype=queries.dtype, device=queries.device
         )
 
+        # Optional debug printing (set SPARSE_DEBUG=1 in env to enable)
+        debug = os.environ.get("SPARSE_DEBUG")
+        layer_idx = kwargs.get("layer_idx", None)
+        if debug:
+            header = f"[sparse] layer={layer_idx} queries={queries.shape} keys={keys.shape} init_mask_density={sparse_attention_mask.get_density():.6f}"
+            print(header, flush=True)
+            try:
+                log_path = os.environ.get("SPARSE_LOG_PATH", os.path.join(os.getcwd(), "output_test_sparse", "sparse_debug.log"))
+                os.makedirs(os.path.dirname(log_path), exist_ok=True)
+                with open(log_path, "a") as fh:
+                    fh.write(header + "\n")
+            except Exception:
+                pass
+
         # Apply all maskers sequentially, each one on the output of the previous one
         for masker in self.maskers:
+            masker_name = getattr(masker, "__class__", type(masker)).__name__
             sparse_attention_mask = masker.add_mask(
                 keys=keys,
                 queries=queries,
@@ -111,6 +127,19 @@ class ResearchAttention(SparseAttention):
                 previous_mask=sparse_attention_mask,
                 **kwargs,
             )
+            if debug:
+                try:
+                    dens = sparse_attention_mask.get_density()
+                except Exception:
+                    dens = None
+                line = f"[sparse] layer={layer_idx} masker={masker_name} mask_density={dens}"
+                print(line, flush=True)
+                try:
+                    log_path = os.environ.get("SPARSE_LOG_PATH", os.path.join(os.getcwd(), "output_test_sparse", "sparse_debug.log"))
+                    with open(log_path, "a") as fh:
+                        fh.write(line + "\n")
+                except Exception:
+                    pass
 
         if MicroMetricLogger().is_metric_enabled("research_attention_density"):
             MicroMetricLogger().log(
@@ -123,6 +152,15 @@ class ResearchAttention(SparseAttention):
         # Always request attention weights to match the expected return signature
         attention_output: torch.Tensor
         attention_weights: torch.Tensor
+        if debug:
+            final_line = f"[sparse] layer={layer_idx} final_mask_density={sparse_attention_mask.get_density():.6f} -- computing masked attention"
+            print(final_line, flush=True)
+            try:
+                log_path = os.environ.get("SPARSE_LOG_PATH", os.path.join(os.getcwd(), "output_test_sparse", "sparse_debug.log"))
+                with open(log_path, "a") as fh:
+                    fh.write(final_line + "\n")
+            except Exception:
+                pass
         attention_output, attention_weights = get_masked_attention_output(
             module=module,
             queries=queries,
@@ -135,6 +173,18 @@ class ResearchAttention(SparseAttention):
             return_attention_weights=True,
             **kwargs,
         )
+        if debug:
+            try:
+                out_line = f"[sparse] layer={layer_idx} attention_output={attention_output.shape} attention_weights={None if attention_weights is None else attention_weights.shape}"
+                print(out_line, flush=True)
+                try:
+                    log_path = os.environ.get("SPARSE_LOG_PATH", os.path.join(os.getcwd(), "output_test_sparse", "sparse_debug.log"))
+                    with open(log_path, "a") as fh:
+                        fh.write(out_line + "\n")
+                except Exception:
+                    pass
+            except Exception:
+                pass
 
         if MicroMetricLogger().is_metric_enabled("research_attention_output_error"):
             true_attention_output, _ = get_true_attention_output(
