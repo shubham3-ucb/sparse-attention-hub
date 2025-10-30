@@ -1,0 +1,86 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 2.5564517974853516
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 1.0720150470733643
+    },
+    {
+      "response": " Lowell",
+      "elapsed_s": 1.02449369430542
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 1.0344517230987549
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 0.8729634284973145
+    },
+    {
+      "response": " Channel 4",
+      "elapsed_s": 0.9102721214294434
+    },
+    {
+      "response": " Mayiladuthurai",
+      "elapsed_s": 1.0443096160888672
+    },
+    {
+      "response": " Pueraria",
+      "elapsed_s": 0.15344023704528809
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 0.7086148262023926
+    },
+    {
+      "response": " Noelle Scaggs",
+      "elapsed_s": 0.5069804191589355
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 11.625337839126587
+    },
+    {
+      "response": " Charles L. Deardon",
+      "elapsed_s": 25.632599353790283
+    },
+    {
+      "response": " East Lansing",
+      "elapsed_s": 21.72446894645691
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 22.0591561794281
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 17.05404567718506
+    },
+    {
+      "response": " BRITISH",
+      "elapsed_s": 17.47313618659973
+    },
+    {
+      "response": " Thiruvaduthurai",
+      "elapsed_s": 21.231584548950195
+    },
+    {
+      "response": " Pueraria",
+      "elapsed_s": 0.37620973587036133
+    },
+    {
+      "response": " 2021",
+      "elapsed_s": 12.268144607543945
+    },
+    {
+      "response": " Noelle",
+      "elapsed_s": 6.105028390884399
+    }
+  ]
+}

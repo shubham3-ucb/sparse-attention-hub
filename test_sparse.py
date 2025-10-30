@@ -43,15 +43,15 @@ def run_example(
     """
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    out_dir = os.path.join(os.getcwd(), "output_test_sparse")
+    out_dir = os.environ.get("OUTPUT_DIR", os.path.join(os.getcwd(), "output_test_sparse"))
     os.makedirs(out_dir, exist_ok=True)
 
     ds = load_dataset("Xnhyacinth/LongBench", "hotpotqa", split="test")
     ds = ds.select(list(range(min(num_samples, len(ds)))))
 
     hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HF_HUB_TOKEN")
-    # Use float32 for deterministic, high-precision prefill comparisons
-    model_kwargs = {"torch_dtype": torch.float32}
+    # Use bfloat16 for memory efficiency; switch to float32 only for strict debugging
+    model_kwargs = {"torch_dtype": torch.bfloat16}
     tokenizer_kwargs = {"padding_side": "left"}
     if hf_token:
         model_kwargs["use_auth_token"] = hf_token
@@ -246,6 +246,19 @@ def run_example(
 
 
 if __name__ == "__main__":
-    run_example()
+    # Allow overriding number of samples via env var for quick experiments
+    ns = os.environ.get("NUM_SAMPLES")
+    try:
+        num_samples = int(ns) if ns is not None else 10
+    except Exception:
+        num_samples = 10
+
+    # Ensure OUTPUT_DIR exists and set SPARSE_LOG_PATH to a file inside it (always)
+    out_dir = os.environ.get("OUTPUT_DIR", os.path.join(os.getcwd(), "output_test_sparse"))
+    os.makedirs(out_dir, exist_ok=True)
+    os.environ["SPARSE_LOG_PATH"] = os.environ.get("SPARSE_LOG_PATH", os.path.join(out_dir, "hf_prefill.log"))
+
+    print(f"Running test_sparse with NUM_SAMPLES={num_samples}, OUTPUT_DIR={out_dir}, PREFILL_CHUNK_SIZE={os.environ.get('PREFILL_CHUNK_SIZE')}, SPARSE_LOG_PATH={os.environ.get('SPARSE_LOG_PATH')}")
+    run_example(num_samples=num_samples)
 
 

@@ -1,0 +1,86 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 1.7313368320465088
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 1.9273858070373535
+    },
+    {
+      "response": " Lowell",
+      "elapsed_s": 1.9149789810180664
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 1.8886022567749023
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 1.586857557296753
+    },
+    {
+      "response": " Channel 4",
+      "elapsed_s": 1.6477673053741455
+    },
+    {
+      "response": " Mayiladuthurai",
+      "elapsed_s": 1.8806862831115723
+    },
+    {
+      "response": " Pueraria",
+      "elapsed_s": 0.2511131763458252
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 1.2589733600616455
+    },
+    {
+      "response": " Noelle Scaggs",
+      "elapsed_s": 0.8604888916015625
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 11.089329481124878
+    },
+    {
+      "response": " Charles L. S. Engle",
+      "elapsed_s": 21.552029848098755
+    },
+    {
+      "response": " Lansing",
+      "elapsed_s": 21.1679904460907
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 21.263968467712402
+    },
+    {
+      "response": " On film",
+      "elapsed_s": 17.054014682769775
+    },
+    {
+      "response": " Marlene Dietrich",
+      "elapsed_s": 17.447567224502563
+    },
+    {
+      "response": " Perinthalmadhumadhyam",
+      "elapsed_s": 20.404114246368408
+    },
+    {
+      "response": " P.",
+      "elapsed_s": 0.8695809841156006
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 12.363118886947632
+    },
+    {
+      "response": " Noelle Scaggs",
+      "elapsed_s": 6.955678701400757
+    }
+  ]
+}
