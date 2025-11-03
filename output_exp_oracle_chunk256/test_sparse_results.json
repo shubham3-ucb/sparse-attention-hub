@@ -1,0 +1,86 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 1.7422378063201904
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 1.9287731647491455
+    },
+    {
+      "response": " Lowell",
+      "elapsed_s": 1.897778034210205
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 1.9221367835998535
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 1.6378273963928223
+    },
+    {
+      "response": " Channel 4",
+      "elapsed_s": 1.6588540077209473
+    },
+    {
+      "response": " Mayiladuthurai",
+      "elapsed_s": 1.861661434173584
+    },
+    {
+      "response": " Pueraria",
+      "elapsed_s": 0.25462770462036133
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 1.265578031539917
+    },
+    {
+      "response": " Noelle Scaggs",
+      "elapsed_s": 0.8702068328857422
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 5.8297812938690186
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 10.825199127197266
+    },
+    {
+      "response": " Howell",
+      "elapsed_s": 10.701716184616089
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 10.74894094467163
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 8.674914121627808
+    },
+    {
+      "response": " Channel 4",
+      "elapsed_s": 10.502702236175537
+    },
+    {
+      "response": " Mayiladuthurai",
+      "elapsed_s": 10.290642023086548
+    },
+    {
+      "response": " Pueraria",
+      "elapsed_s": 0.6294946670532227
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 6.4523468017578125
+    },
+    {
+      "response": " Noelle Scaggs",
+      "elapsed_s": 3.8125576972961426
+    }
+  ]
+}

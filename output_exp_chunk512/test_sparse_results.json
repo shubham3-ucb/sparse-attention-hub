@@ -1,0 +1,86 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 1.4071407318115234
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 1.4031355381011963
+    },
+    {
+      "response": " Lowell",
+      "elapsed_s": 1.32346773147583
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 1.3236942291259766
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 1.1254072189331055
+    },
+    {
+      "response": " Channel 4",
+      "elapsed_s": 1.2026615142822266
+    },
+    {
+      "response": " Mayiladuthurai",
+      "elapsed_s": 1.3222758769989014
+    },
+    {
+      "response": " Pueraria",
+      "elapsed_s": 0.1863999366760254
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 0.951308012008667
+    },
+    {
+      "response": " Noelle Scaggs",
+      "elapsed_s": 0.6680960655212402
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 10.482908964157104
+    },
+    {
+      "response": " Charles Lutwidge Dodgson",
+      "elapsed_s": 20.72288680076599
+    },
+    {
+      "response": " Lansing",
+      "elapsed_s": 20.273728132247925
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 20.369959354400635
+    },
+    {
+      "response": " On film",
+      "elapsed_s": 16.295249700546265
+    },
+    {
+      "response": " Conservative",
+      "elapsed_s": 16.985206604003906
+    },
+    {
+      "response": " Perinthalmanna",
+      "elapsed_s": 19.299747943878174
+    },
+    {
+      "response": " Pueraria",
+      "elapsed_s": 0.7783279418945312
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 11.73101544380188
+    },
+    {
+      "response": " Noelle",
+      "elapsed_s": 6.38887357711792
+    }
+  ]
+}

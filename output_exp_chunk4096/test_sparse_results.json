@@ -1,0 +1,86 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 1.1935546398162842
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 1.0722317695617676
+    },
+    {
+      "response": " Lowell",
+      "elapsed_s": 1.0447866916656494
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 1.0332801342010498
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 0.8741977214813232
+    },
+    {
+      "response": " Channel 4",
+      "elapsed_s": 0.9113988876342773
+    },
+    {
+      "response": " Mayiladuthurai",
+      "elapsed_s": 1.0487608909606934
+    },
+    {
+      "response": " Pueraria",
+      "elapsed_s": 0.1490340232849121
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 0.7047257423400879
+    },
+    {
+      "response": " Noelle Scaggs",
+      "elapsed_s": 0.5119357109069824
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 11.432628631591797
+    },
+    {
+      "response": " Charles L. Lutwidge",
+      "elapsed_s": 23.68559503555298
+    },
+    {
+      "response": " East Lansing",
+      "elapsed_s": 23.431416749954224
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 27.310932159423828
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 17.98320460319519
+    },
+    {
+      "response": " The Young",
+      "elapsed_s": 17.41495370864868
+    },
+    {
+      "response": " Thiruvaduthurai",
+      "elapsed_s": 22.84808349609375
+    },
+    {
+      "response": " Pueraria",
+      "elapsed_s": 0.3790571689605713
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 12.704161882400513
+    },
+    {
+      "response": " Fingers",
+      "elapsed_s": 6.108073949813843
+    }
+  ]
+}

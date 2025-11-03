@@ -1,0 +1,23 @@
+{
+  "dense": {
+    "n": 10,
+    "mean_elapsed_s": 1.5039681196212769
+  },
+  "sparse": {
+    "n": 10,
+    "mean_elapsed_s": 7.846829509735107
+  },
+  "metrics": {
+    "task_scores": {
+      "hotpotqa": 35.0
+    },
+    "standard_overall_score": 35.0,
+    "overall_score": 35.0,
+    "summary": {
+      "total_tasks": 1,
+      "standard_tasks": 1,
+      "extended_tasks": 0,
+      "total_samples": 20
+    }
+  }
+}
