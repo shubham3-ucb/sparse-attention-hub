@@ -138,6 +138,15 @@ class ModelAdapterHF(ModelAdapter):
         with torch.no_grad():
             for question in questions:
                 sparse_meta_data: Dict[str, Any] = {}
+                
+                # Store model's rotary_emb in sparse_meta_data for EXTEND_CONTEXT support
+                # This allows access to rotary_emb from attention layers
+                if self._sparse_attention_available and os.environ.get("EXTEND_CONTEXT", "0").lower() in ("1", "true", "yes"):
+                    # Try to find rotary_emb in the model
+                    if hasattr(self.model, "model") and hasattr(self.model.model, "rotary_emb"):
+                        sparse_meta_data["_rotary_emb"] = self.model.model.rotary_emb
+                    elif hasattr(self.model, "rotary_emb"):
+                        sparse_meta_data["_rotary_emb"] = self.model.rotary_emb
 
                 question_tokens = self.tokenizer.encode(question, return_tensors="pt")
                 if self.device is not None:
@@ -593,6 +602,16 @@ class ModelAdapterHF(ModelAdapter):
                 raise ValueError(
                     "sparse_meta_data must be provided while calling model.forward()"
                 )
+
+            # Extract cos/sin from position_embeddings if available (for EXTEND_CONTEXT)
+            # Transformers typically passes position_embeddings as tuple (cos, sin)
+            if "position_embeddings" in kwargs:
+                position_embeddings: Any = kwargs.get("position_embeddings")
+                if isinstance(position_embeddings, tuple) and len(position_embeddings) == 2:
+                    cos: torch.Tensor = position_embeddings[0]
+                    sin: torch.Tensor = position_embeddings[1]
+                    kwargs["cos"] = cos
+                    kwargs["sin"] = sin
 
             return sparse_attention.custom_attention(
                 module=module,

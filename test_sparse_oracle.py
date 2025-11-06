@@ -59,13 +59,18 @@ def run_example(
     # Instantiate adapters
     adapter_dense = ModelAdapterHF(model_name, None, model_kwargs=model_kwargs, tokenizer_kwargs=tokenizer_kwargs, device=device)
     # Sparse config: OracleTopK (top 5% attention scores) + Sink + Local
+    # DEBUG: Set heavy_size=1.0 to create full mask and disable repositioning
+    # This helps isolate if repositioning is causing the repetitive generation issue
+    # When heavy_size >= seq_len_keys, full mask is created and repositioning is skipped
+    heavy_size = float(os.environ.get("ORACLE_TOPK_HEAVY_SIZE", "0.1"))  # Default to 1.0 for debugging
     sparse_cfg = ResearchAttentionConfig(
         masker_configs=[
             SinkMaskerConfig(sink_size=128),
             LocalMaskerConfig(window_size=128),
-            OracleTopKConfig(heavy_size=0.05),
+            OracleTopKConfig(heavy_size=heavy_size),
         ]
     )
+    print(f"[DEBUG] OracleTopK heavy_size={heavy_size} (set ORACLE_TOPK_HEAVY_SIZE env var to override)")
     adapter_sparse = ModelAdapterHF(model_name, sparse_cfg, model_kwargs=model_kwargs, tokenizer_kwargs=tokenizer_kwargs, device=device)
 
     # Best-effort: enable FlashAttention hooks if present on model
