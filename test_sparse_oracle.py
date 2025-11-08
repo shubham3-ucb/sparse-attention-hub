@@ -32,7 +32,7 @@ from benchmark.benchmark_registry import create_benchmark_instance
 def run_example(
     model_name: str = "meta-llama/Llama-3.2-1B-Instruct",
     max_context_length: Optional[int] = None,
-    max_new_tokens: int = 32,
+    max_new_tokens: int = 8,
     num_samples: int = 1,
 ) -> None:
     """Run num_samples HotpotQA examples using dense and sparse attention.
@@ -93,15 +93,19 @@ def run_example(
 
     generation_kwargs = {"max_new_tokens": max_new_tokens}
     # request_kwargs controls truncation; leave empty for full-context unless a cap is provided
+    request_kwargs = {}
     if os.environ.get("MAX_CONTEXT_LENGTH"):
         try:
-            request_kwargs = {"max_context_length": int(os.environ["MAX_CONTEXT_LENGTH"])}
+            request_kwargs["max_context_length"] = int(os.environ["MAX_CONTEXT_LENGTH"])
         except Exception:
-            request_kwargs = {}
+            pass
     elif max_context_length is not None:
-        request_kwargs = {"max_context_length": int(max_context_length)}
-    else:
-        request_kwargs = {}
+        request_kwargs["max_context_length"] = int(max_context_length)
+    
+    # Allow truncating from middle for faster experiments
+    if os.environ.get("TRUNCATE_FROM_MIDDLE", "").lower() in ("1", "true", "yes"):
+        request_kwargs["truncate_from_middle"] = True
+        print(f"[DEBUG] Truncating from middle enabled (set TRUNCATE_FROM_MIDDLE=1)")
 
     # Header
     try:

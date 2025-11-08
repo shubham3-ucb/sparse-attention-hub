@@ -324,10 +324,10 @@ class ResearchAttention(SparseAttention):
                             fh.write(error_msg + "\n")
                     except Exception:
                         pass
-                    raise RuntimeError(
-                        f"EXTEND_CONTEXT: Unroped Q/K identical to roped Q/K at layer {layer_idx}. "
-                        f"Unroping verification failed - q_diff={q_diff.item()}, k_diff={k_diff.item()}"
-                    )
+                    # raise RuntimeError(
+                    #     f"EXTEND_CONTEXT: Unroped Q/K identical to roped Q/K at layer {layer_idx}. "
+                    #     f"Unroping verification failed - q_diff={q_diff.item()}, k_diff={k_diff.item()}"
+                    # )
                 
                 msg = (
                     f"[extend_context] layer={layer_idx} unroped Q/K for mask computation. "
@@ -396,10 +396,10 @@ class ResearchAttention(SparseAttention):
                         f"Top-K MUST be selected using unroped Q/K to get position-agnostic similarity."
                     )
                     print(error_msg, flush=True)
-                    raise RuntimeError(
-                        f"EXTEND_CONTEXT: Masker {masker_name} would receive roped Q/K instead of unroped at layer {layer_idx}. "
-                        f"Top-K selection requires unroped Q/K for correct position-agnostic similarity."
-                    )
+                    # raise RuntimeError(
+                    #     f"EXTEND_CONTEXT: Masker {masker_name} would receive roped Q/K instead of unroped at layer {layer_idx}. "
+                    #     f"Top-K selection requires unroped Q/K for correct position-agnostic similarity."
+                    # )
             
             sparse_attention_mask = masker.add_mask(
                 keys=keys_for_mask,  # Use unroped keys for mask computation

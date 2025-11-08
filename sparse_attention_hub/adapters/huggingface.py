@@ -126,9 +126,20 @@ class ModelAdapterHF(ModelAdapter):
         )
 
         context_tokens = self.tokenizer.encode(context, return_tensors="pt")
-        context_tokens = context_tokens[
-            :, :max_context_length
-        ]  # truncate context to max_context_length
+        # Truncate context: either from end (default) or from middle
+        truncate_from_middle: bool = request_kwargs.get("truncate_from_middle", False)
+        if context_tokens.shape[1] > max_context_length:
+            if truncate_from_middle:
+                # Take half from beginning, half from end, remove middle
+                half_len = max_context_length // 2
+                context_tokens = torch.cat([
+                    context_tokens[:, :half_len],
+                    context_tokens[:, -half_len:]
+                ], dim=1)
+                print(f"Truncated context from middle: {context_tokens.shape[1]} tokens (took {half_len} from start, {half_len} from end)")
+            else:
+                # Default: truncate from end
+                context_tokens = context_tokens[:, :max_context_length]
         if self.device is not None:
             context_tokens = context_tokens.to(self.device)
         print(f"Context tokens: {context_tokens.shape}")

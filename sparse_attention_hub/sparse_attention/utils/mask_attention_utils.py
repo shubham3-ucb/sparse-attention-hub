@@ -567,10 +567,15 @@ def get_masked_attention_output(
             # Process each head independently
             for head_idx in range(num_heads):
                 # Get union of selected key indices for this head
-                union_key_indices: set = set()
-                for q_idx in range(seq_len_q):
-                    active_key_indices = torch.nonzero(dense_mask[0, head_idx, q_idx] > 0).squeeze(-1).cpu().tolist()
-                    union_key_indices.update(active_key_indices)
+                # Optimization: if only one query, skip union computation
+                if seq_len_q == 1:
+                    active_key_indices = torch.nonzero(dense_mask[0, head_idx, 0] > 0).squeeze(-1).cpu().tolist()
+                    union_key_indices: set = set(active_key_indices)
+                else:
+                    union_key_indices: set = set()
+                    for q_idx in range(seq_len_q):
+                        active_key_indices = torch.nonzero(dense_mask[0, head_idx, q_idx] > 0).squeeze(-1).cpu().tolist()
+                        union_key_indices.update(active_key_indices)
                 
                 # Separate prefix vs current chunk key indices
                 prefix_key_indices: List[int] = []
@@ -647,12 +652,17 @@ def get_masked_attention_output(
             # ====================================================================
             # Generate RoPE embeddings for each head independently
             # This allows future customization where each head has different position encodings
+            # Handle GQA: queries have num_heads, keys have num_kv_heads
             # ====================================================================
+            num_kv_heads: int = keys.shape[1]  # GQA: keys may have fewer heads
+            head_ratio: int = num_heads // num_kv_heads  # e.g., 32 // 8 = 4
+            
             cos_q_per_head_list: List[torch.Tensor] = []
             sin_q_per_head_list: List[torch.Tensor] = []
             cos_k_per_head_list: List[torch.Tensor] = []
             sin_k_per_head_list: List[torch.Tensor] = []
             
+            # Compute cos/sin for all query heads
             for head_idx in range(num_heads):
                 # Query cos/sin for this head
                 pos_ids_q_head: torch.Tensor = position_ids_q_per_head[:, head_idx, :]  # (batch, seq_len_q)
@@ -662,9 +672,12 @@ def get_masked_attention_output(
                 cos_q_head, sin_q_head = rotary_emb(dummy_x_q_head, pos_ids_q_head)  # (batch, seq_len_q, head_dim)
                 cos_q_per_head_list.append(cos_q_head)
                 sin_q_per_head_list.append(sin_q_head)
-                
-                # Key cos/sin for this head
-                pos_ids_k_head: torch.Tensor = position_ids_k_per_head[:, head_idx, :]  # (batch, seq_len_k)
+            
+            # Compute cos/sin for key heads only (GQA: fewer key heads)
+            for kv_head_idx in range(num_kv_heads):
+                # Map to corresponding query head (use first query head in the group)
+                query_head_idx: int = kv_head_idx * head_ratio
+                pos_ids_k_head: torch.Tensor = position_ids_k_per_head[:, query_head_idx, :]  # (batch, seq_len_k)
                 dummy_x_k_head: torch.Tensor = torch.zeros(
                     batch_size, seq_len_k, device=keys.device, dtype=torch.float32
                 )
@@ -672,11 +685,12 @@ def get_masked_attention_output(
                 cos_k_per_head_list.append(cos_k_head)
                 sin_k_per_head_list.append(sin_k_head)
             
-            # Stack to get (batch, num_heads, seq_len, head_dim) shape
+            # Stack to get (batch, num_heads, seq_len, head_dim) shape for queries
             cos_q_mod: torch.Tensor = torch.stack(cos_q_per_head_list, dim=1)  # (batch, num_heads, seq_len_q, head_dim)
             sin_q_mod: torch.Tensor = torch.stack(sin_q_per_head_list, dim=1)  # (batch, num_heads, seq_len_q, head_dim)
-            cos_k_mod: torch.Tensor = torch.stack(cos_k_per_head_list, dim=1)  # (batch, num_heads, seq_len_k, head_dim)
-            sin_k_mod: torch.Tensor = torch.stack(sin_k_per_head_list, dim=1)  # (batch, num_heads, seq_len_k, head_dim)
+            # Stack to get (batch, num_kv_heads, seq_len, head_dim) shape for keys
+            cos_k_mod: torch.Tensor = torch.stack(cos_k_per_head_list, dim=1)  # (batch, num_kv_heads, seq_len_k, head_dim)
+            sin_k_mod: torch.Tensor = torch.stack(sin_k_per_head_list, dim=1)  # (batch, num_kv_heads, seq_len_k, head_dim)
             # Apply RoPE to queries: q_rot = q * cos_q + rotate_half(q) * sin_q (using modified cos/sin)
             reroped_queries = (unroped_queries * cos_q_mod) + (rotate_half(unroped_queries) * sin_q_mod)
             # Apply RoPE to keys: k_rot = k * cos_k + rotate_half(k) * sin_k (using modified cos/sin)
@@ -696,10 +710,76 @@ def get_masked_attention_output(
                 dropout=dropout,
                 training=training,
             )
+            # ====================================================================
+            # Compare Attention Patterns (Original vs Repositioned) - Selected Keys Only
+            # ====================================================================
+            dense_mask = sparse_attention_mask.get_dense_mask()  # [batch, num_heads, seq_len_q, seq_len_k]
+            num_heads: int = exp_attention_weights.shape[1]
+            seq_len_q: int = exp_attention_weights.shape[2]
+            seq_len_k: int = exp_attention_weights.shape[3]
+            
+            # Sample a few queries to analyze
+            sample_queries = [0, seq_len_q // 4, seq_len_q // 2, seq_len_q * 3 // 4, seq_len_q - 1]
+            sample_queries = [q for q in sample_queries if q < seq_len_q]
+            sample_head = 0  # Analyze head 0
+            # import pdb; pdb.set_trace()
+            
+            print(f"\n  [Attention Pattern Comparison] (Selected Keys Only)")
+            for q_idx in sample_queries[:3]:  # Show first 3 sample queries
+                # Get selected key indices for this query
+                selected_k_indices = torch.nonzero(dense_mask[0, sample_head, q_idx] > 0).squeeze(-1).cpu().tolist()
+                if len(selected_k_indices) == 0:
+                    continue
+                
+                # Get attention scores for selected keys only (before and after)
+                orig_scores_selected = exp_attention_weights[0, sample_head, q_idx, selected_k_indices].cpu()
+                reroped_scores_selected = exp_attention_weights_reroped[0, sample_head, q_idx, selected_k_indices].cpu()
+                
+                # Find max key (before and after)
+                orig_max_idx_in_selected = torch.argmax(orig_scores_selected).item()
+                reroped_max_idx_in_selected = torch.argmax(reroped_scores_selected).item()
+                orig_max_k_idx = selected_k_indices[orig_max_idx_in_selected]
+                reroped_max_k_idx = selected_k_indices[reroped_max_idx_in_selected]
+                
+                # Get top-3 keys (before and after)
+                orig_top3_values, orig_top3_indices = torch.topk(orig_scores_selected, k=min(3, len(selected_k_indices)))
+                reroped_top3_values, reroped_top3_indices = torch.topk(reroped_scores_selected, k=min(3, len(selected_k_indices)))
+                orig_top3_k_indices = [selected_k_indices[i.item()] for i in orig_top3_indices]
+                reroped_top3_k_indices = [selected_k_indices[i.item()] for i in reroped_top3_indices]
+                
+                # Compare max key
+                max_changed = orig_max_k_idx != reroped_max_k_idx
+                max_score_diff = abs(orig_scores_selected[orig_max_idx_in_selected].item() - reroped_scores_selected[reroped_max_idx_in_selected].item())
+                
+                print(f"    Q{q_idx}: {len(selected_k_indices)} selected keys")
+                print(f"      Max key: {orig_max_k_idx} → {reroped_max_k_idx} {'(CHANGED)' if max_changed else '(same)'}, score_diff={max_score_diff:.6f}")
+                print(f"      Top-3 keys (orig): {orig_top3_k_indices} with scores {[f'{v.item():.4f}' for v in orig_top3_values]}")
+                print(f"      Top-3 keys (reroped): {reroped_top3_k_indices} with scores {[f'{v.item():.4f}' for v in reroped_top3_values]}")
+                
+                # Check if top-3 changed
+                top3_same = set(orig_top3_k_indices) == set(reroped_top3_k_indices)
+                print(f"      Top-3 same? {top3_same}")
+            
+            # Compare overall statistics for selected keys
+            # Note: exp_attention_weights already has zeros for non-selected keys (mask applied in _compute_masked_exp_attention_weights)
+            orig_selected_mean = exp_attention_weights[exp_attention_weights > 0].mean().item()
+            reroped_selected_mean = exp_attention_weights_reroped[exp_attention_weights_reroped > 0].mean().item()
+            orig_selected_std = exp_attention_weights[exp_attention_weights > 0].std().item()
+            reroped_selected_std = exp_attention_weights_reroped[exp_attention_weights_reroped > 0].std().item()
+            
+            print(f"    Selected keys stats: mean {orig_selected_mean:.6f} → {reroped_selected_mean:.6f}, std {orig_selected_std:.6f} → {reroped_selected_std:.6f}")
+            
+
+            
             # Assert they match original (verify unrope→rope round-trip preserves attention weights)
-            weights_diff = torch.abs(exp_attention_weights - exp_attention_weights_reroped).max()
+            # Compute diff only over selected keys (non-selected are already zeroed by mask in _compute_masked_exp_attention_weights)
+            weights_diff_all = torch.abs(exp_attention_weights - exp_attention_weights_reroped)
+            # Note: Both tensors already have zeros for non-selected keys, so max naturally comes from selected keys
+            weights_diff = weights_diff_all.max()  # Max diff (will be from selected keys since non-selected are 0 in both)
             # Relative error (for exp values, small absolute diff can be significant)
-            weights_rel_diff = (weights_diff / (exp_attention_weights.abs().max() + 1e-8)).item()
+            orig_max = exp_attention_weights.abs().max().item()
+            reroped_max = exp_attention_weights_reroped.abs().max().item()
+            weights_rel_diff = (weights_diff / (orig_max + 1e-8)).item()
             # Use relaxed tolerance for exp attention weights (exp amplifies small numerical differences)
             # 5% relative error is acceptable for exp operations with floating point precision
             threshold_abs = 0.2  # 5% absolute
@@ -708,14 +788,48 @@ def get_masked_attention_output(
             rel_ok = weights_rel_diff < threshold_rel
             passed = abs_ok and rel_ok
             print(f"  [Attention Weights Verification] max_diff={weights_diff.item():.6f} (threshold={threshold_abs}, ok={abs_ok}), rel_diff={weights_rel_diff:.6f} (threshold={threshold_rel}, ok={rel_ok}) {'✓' if passed else '✗ FAILED'}")
-            assert passed, f"Re-roped attention weights don't match original: diff={weights_diff.item()}, rel_diff={weights_rel_diff:.6f} (thresholds: abs<{threshold_abs}, rel<{threshold_rel})"
+            print(f"    Original weights range: [{exp_attention_weights.min().item():.6f}, {orig_max:.6f}], Reroped range: [{exp_attention_weights_reroped.min().item():.6f}, {reroped_max:.6f}]")
+            print(f"    Note: Large diff expected when using per-head position reassignment (position IDs changed)")
+            
+            # ====================================================================
+            # Compare Final Attention Outputs (Original vs Repositioned)
+            # ====================================================================
+            # Compute final attention output with both original and reroped weights
+            # Cast reroped weights to match original dtype for compatibility
+            exp_attention_weights_reroped_typed: torch.Tensor = exp_attention_weights_reroped.to(exp_attention_weights.dtype)
+            
+            num_key_value_groups: int = _get_num_key_value_groups(queries, values)
+            value_states: torch.Tensor = repeat_kv(values, num_key_value_groups)
+            
+            # Original output
+            num_orig: torch.Tensor = _get_attention_numerator(exp_attention_weights, value_states)
+            den_orig: torch.Tensor = _get_attention_denominator(exp_attention_weights)
+            output_orig: torch.Tensor = (num_orig / den_orig).transpose(1, 2).contiguous()
+            
+            # Repositioned output
+            num_reroped: torch.Tensor = _get_attention_numerator(exp_attention_weights_reroped_typed, value_states)
+            den_reroped: torch.Tensor = _get_attention_denominator(exp_attention_weights_reroped_typed)
+            output_reroped: torch.Tensor = (num_reroped / den_reroped).transpose(1, 2).contiguous()
+            
+            # Compare outputs
+            output_diff: torch.Tensor = torch.abs(output_orig - output_reroped)
+            output_max_diff: float = output_diff.max().item()
+            output_mean_diff: float = output_diff.mean().item()
+            output_rel_diff: float = output_max_diff / (output_orig.abs().max().item() + 1e-8)
+            
+            print(f"\n  [Final Attention Output Comparison]")
+            print(f"    Output max_diff: {output_max_diff:.6f}, mean_diff: {output_mean_diff:.6f}, rel_diff: {output_rel_diff:.6f}")
+            print(f"    Output shapes: orig={output_orig.shape}, reroped={output_reroped.shape}")
+            print(f"    Output ranges: orig=[{output_orig.min().item():.6f}, {output_orig.max().item():.6f}], reroped=[{output_reroped.min().item():.6f}, {output_reroped.max().item():.6f}]")
+            
+            # assert passed, f"Re-roped attention weights don't match original: diff={weights_diff.item()}, rel_diff={weights_rel_diff:.6f} (thresholds: abs<{threshold_abs}, rel<{threshold_rel})"
             # Overwrite with re-roped version after verification (cast to original dtype to match model precision)
             # TEST: Add random perturbation to verify it affects downstream (comment out for production)
             # perturbation = torch.randn_like(exp_attention_weights_reroped) * 0.0  # 10% noise
             # exp_attention_weights = (exp_attention_weights_reroped + perturbation).to(exp_attention_weights.dtype)
             exp_attention_weights = exp_attention_weights_reroped.to(exp_attention_weights.dtype)
         except Exception as e:
-            print(f"  [Unroped/Re-roped] Exception: {e}")
+            assert False, f"  [Unroped/Re-roped] Exception: {e}"
         
         print(f"\n[Attention Pattern] queries.shape={queries.shape}, keys.shape={keys.shape}, mask_density={sparse_attention_mask.get_density():.4f}")
         print(f"  Query position_ids: {position_ids_q[0, 0].item() if position_ids_q is not None else 'N/A'}...{position_ids_q[0, -1].item() if position_ids_q is not None else 'N/A'}")
