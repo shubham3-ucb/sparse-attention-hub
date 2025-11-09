@@ -1,0 +1,86 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 0.7308387756347656
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 0.1998434066772461
+    },
+    {
+      "response": " Exeter",
+      "elapsed_s": 0.16783356666564941
+    },
+    {
+      "response": " Jupiter",
+      "elapsed_s": 2.9951822757720947
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 0.28998708724975586
+    },
+    {
+      "response": " Parliament",
+      "elapsed_s": 0.17466163635253906
+    },
+    {
+      "response": " Thiruvaduthurai",
+      "elapsed_s": 0.23203253746032715
+    },
+    {
+      "response": " Pueraria",
+      "elapsed_s": 0.1862621307373047
+    },
+    {
+      "response": " 2018",
+      "elapsed_s": 0.2119739055633545
+    },
+    {
+      "response": " Noelle Scaggs",
+      "elapsed_s": 0.20090913772583008
+    }
+  ],
+  "sparse": [
+    {
+      "response": " 16,000 acres",
+      "elapsed_s": 32.52556800842285
+    },
+    {
+      "response": " 1942",
+      "elapsed_s": 25.082926511764526
+    },
+    {
+      "response": " Macklin",
+      "elapsed_s": 20.69073462486267
+    },
+    {
+      "response": "assistant\n\nGary L.",
+      "elapsed_s": 45.114031076431274
+    },
+    {
+      "response": "assistant\n\nRasel",
+      "elapsed_s": 46.93111062049866
+    },
+    {
+      "response": " 1st",
+      "elapsed_s": 25.708707809448242
+    },
+    {
+      "response": "assistant\n\nMasilaman",
+      "elapsed_s": 40.29932451248169
+    },
+    {
+      "response": "  Pueraria",
+      "elapsed_s": 27.91409707069397
+    },
+    {
+      "response": "assistant\n\nThe Seminary",
+      "elapsed_s": 41.30758500099182
+    },
+    {
+      "response": "assistant\n\nNoelle Sc",
+      "elapsed_s": 40.97557735443115
+    }
+  ]
+}

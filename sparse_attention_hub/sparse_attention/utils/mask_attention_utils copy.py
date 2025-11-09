@@ -1,6 +1,5 @@
 """Utility functions for masked attention computation."""
 
-import os
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
@@ -495,7 +494,6 @@ def get_masked_attention_output(
     unroped_queries = queries
     unroped_keys = keys
     if (sparse_attention_mask.get_density() < 1.0) and (rotary_emb is not None and position_ids_q is not None):
-        # import pdb; pdb.set_trace()
         try:
             # Compute cos/sin for queries
             # Current: Same position_ids for all heads (will be broadcasted in unapply_rotary_pos_emb_queries)
@@ -515,16 +513,8 @@ def get_masked_attention_output(
             # Verification: ensure unroped tensors are actually different from roped
             q_diff = torch.abs(queries - unroped_queries).max()
             k_diff = torch.abs(keys - unroped_keys).max()
-            debug = os.environ.get("SPARSE_DEBUG")
-            if debug:
-                # Keep simple verification - uncomment verbose details if needed
-                q_diff_val = q_diff.item()
-                k_diff_val = k_diff.item()
-                unroped_ok = q_diff_val > 1e-6 and k_diff_val > 1e-6
-                print(f"  [Unroped] {'✓' if unroped_ok else '✗'} q_diff={q_diff_val:.6f}, k_diff={k_diff_val:.6f}")
-                # Commented out verbose unroped details - uncomment if needed
-                # print(f"  [Unroped] queries.shape={unroped_queries.shape}, keys.shape={unroped_keys.shape}")
-                # print(f"  [Unroped Verification] q_diff.max()={q_diff_val:.6f}, k_diff.max()={k_diff_val:.6f} {'✓' if unroped_ok else '✗ FAILED'}")
+            print(f"  [Unroped] queries.shape={unroped_queries.shape}, keys.shape={unroped_keys.shape}")
+            print(f"  [Unroped Verification] q_diff.max()={q_diff.item():.6f}, k_diff.max()={k_diff.item():.6f} {'✓' if q_diff.item() > 1e-6 and k_diff.item() > 1e-6 else '✗ FAILED'}")
             
             # Re-apply RoPE to unroped Q/K and verify we get same attention weights
             # Apply RoPE manually using the formula: x_rot = x * cos + rotate_half(x) * sin
@@ -747,16 +737,12 @@ def get_masked_attention_output(
                 batch_size, num_heads, seq_len_k, device=keys.device, dtype=torch.long
             )
             
+            print(f"\n[Option 1: Gap Closure Repositioning]")
+            print(f"  Query positions: {min_query_position} to {position_ids_q[0, -1].item()} ({seq_len_q} tokens)")
+            print(f"  Key positions: {position_ids_k_actual[0, 0].item()} to {position_ids_k_actual[0, -1].item()} ({seq_len_k} tokens)")
+            print(f"  Prefix boundary: keys with position < {min_query_position} are prefix")
+            
             # import pdb; pdb.set_trace()
-            print(f"debug: {debug}")
-            if debug:
-                max_q_pos = position_ids_q[0, -1].item()
-                min_k_pos = position_ids_k_actual[0, 0].item()
-                max_k_pos = position_ids_k_actual[0, -1].item()
-                print(f"\n[Option 1: Gap Closure Repositioning]")
-                print(f"  Query positions: {min_query_position} to {max_q_pos} ({seq_len_q} tokens)")
-                print(f"  Key positions: {min_k_pos} to {max_k_pos} ({seq_len_k} tokens)")
-                print(f"  Prefix boundary: keys with position < {min_query_position} are prefix")
 
             # Process each head independently
             for head_idx in range(num_heads):
@@ -765,33 +751,30 @@ def get_masked_attention_output(
                 # Use torch.any(dim=0) to get keys attended by ANY query: (seq_len_k,)
                 union_mask: torch.Tensor = torch.any(dense_mask[0, head_idx, :, :] > 0, dim=0)  # (seq_len_k,)
                 union_key_indices: set = set(torch.nonzero(union_mask).squeeze(-1).cpu().tolist())
+                
+                # import pdb; pdb.set_trace()
 
 
-                # Separate prefix vs current chunk key indices (optimized: batch extract positions)
-                if len(union_key_indices) > 0:
-                    union_key_indices_list: List[int] = list(union_key_indices)
-                    # Batch extract all positions at once (single GPU operation)
-                    union_key_positions_tensor: torch.Tensor = position_ids_k_actual[0, union_key_indices_list]  # (len(union_key_indices),)
-                    union_key_positions_list: List[int] = union_key_positions_tensor.cpu().tolist()
-                    
-                    prefix_key_indices: List[int] = []
-                    current_chunk_key_indices: List[int] = []
-                    for k_idx, k_pos in zip(union_key_indices_list, union_key_positions_list):
-                        if k_pos < min_query_position:
-                            prefix_key_indices.append(k_idx)
-                        else:
-                            current_chunk_key_indices.append(k_idx)
-                else:
-                    prefix_key_indices: List[int] = []
-                    current_chunk_key_indices: List[int] = []
+                # Separate prefix vs current chunk key indices
+                prefix_key_indices: List[int] = []
+                current_chunk_key_indices: List[int] = []
+                
+                for k_idx in union_key_indices:
+                    k_pos: int = position_ids_k_actual[0, k_idx].item()
+                    if k_pos < min_query_position:
+                        prefix_key_indices.append(k_idx)
+                    else:
+                        current_chunk_key_indices.append(k_idx)
+                
+                # import pdb; pdb.set_trace()
 
-                # Sort prefix keys by their original position IDs (optimized: use pre-extracted positions)
+                # Sort prefix keys by their original position IDs (optimized: pre-extract positions)
                 if len(prefix_key_indices) > 0:
-                    # Batch extract positions for prefix keys
-                    prefix_positions_tensor: torch.Tensor = position_ids_k_actual[0, prefix_key_indices]  # (len(prefix_key_indices),)
-                    prefix_positions_list: List[int] = prefix_positions_tensor.cpu().tolist()
-                    # Create tuples and sort
-                    prefix_key_positions: List[Tuple[int, int]] = list(zip(prefix_positions_list, prefix_key_indices))
+                    # Pre-extract positions to avoid repeated .item() calls during sort
+                    prefix_key_positions: List[Tuple[int, int]] = [
+                        (position_ids_k_actual[0, k_idx].item(), k_idx) 
+                        for k_idx in prefix_key_indices
+                    ]
                     prefix_key_positions.sort()  # Sort by position (first element of tuple)
                     prefix_key_indices_sorted: List[int] = [k_idx for _, k_idx in prefix_key_positions]
                     
@@ -801,94 +784,138 @@ def get_masked_attention_output(
                     prefix_key_indices_sorted: List[int] = []
                     max_prefix_position: int = -1
                     
-                # Reassign prefix keys to contiguous positions [0, 1, 2, ...]
+                # COMMENTED OUT: Prefix key reassignment - keep prefix keys at original positions
                 num_prefix_keys: int = len(prefix_key_indices_sorted)
-                if num_prefix_keys > 0:
-                    # Vectorized assignment: create tensor of new positions and assign all at once
-                    new_prefix_positions: torch.Tensor = torch.arange(
-                        num_prefix_keys, device=position_ids_k_per_head.device, dtype=torch.long
-                    )
-                    position_ids_k_per_head[0, head_idx, prefix_key_indices_sorted] = new_prefix_positions
+                for new_pos, k_idx in enumerate(prefix_key_indices_sorted):
+                    position_ids_k_per_head[0, head_idx, k_idx] = new_pos
+
+                import pdb; pdb.set_trace()
+                ## Below line sets max_prefix_position to the last prefix key position
+                # max_prefix_position: int = num_prefix_keys - 1 if num_prefix_keys > 0 else -1
+                
+
+                # # Keep ALL prefix keys (selected and non-selected) at their original positions
+                # for k_idx in range(seq_len_k):
+                #     k_pos: int = position_ids_k_actual[0, k_idx].item()
+                #     if k_pos < min_query_position:  # This is a prefix key
+                #         position_ids_k_per_head[0, head_idx, k_idx] = k_pos  # Keep original position
+                # import pdb; pdb.set_trace()
+                
 
                 # Get all current chunk keys (not just selected ones) - vectorized
                 all_current_chunk_mask: torch.Tensor = position_ids_k_actual[0] >= min_query_position  # (seq_len_k,)
                 all_current_chunk_key_indices: List[int] = torch.nonzero(all_current_chunk_mask).squeeze(-1).cpu().tolist()
+                
+                # import pdb; pdb.set_trace()
 
-                # Sort current chunk keys by their original position IDs (optimized: batch extract)
+                # Sort current chunk keys by their original position IDs (optimized: pre-extract positions)
                 if len(all_current_chunk_key_indices) > 0:
-                    # Batch extract positions
-                    current_chunk_positions_tensor: torch.Tensor = position_ids_k_actual[0, all_current_chunk_key_indices]  # (len(all_current_chunk_key_indices),)
-                    current_chunk_positions_list: List[int] = current_chunk_positions_tensor.cpu().tolist()
-                    # Create tuples and sort
-                    current_chunk_key_positions: List[Tuple[int, int]] = list(zip(current_chunk_positions_list, all_current_chunk_key_indices))
+                    # Pre-extract positions to avoid repeated .item() calls during sort
+                    current_chunk_key_positions: List[Tuple[int, int]] = [
+                        (position_ids_k_actual[0, k_idx].item(), k_idx) 
+                        for k_idx in all_current_chunk_key_indices
+                    ]
                     current_chunk_key_positions.sort()  # Sort by position (first element of tuple)
                     all_current_chunk_key_indices_sorted: List[int] = [k_idx for _, k_idx in current_chunk_key_positions]
                 else:
                     all_current_chunk_key_indices_sorted: List[int] = []
                 
                 # Start current chunk at max_prefix + 1 (or 0 if no prefix)
-                # current_chunk_start: int = max_prefix_position + 1 if max_prefix_position >= 0 else 0
-                current_chunk_start = num_prefix_keys
-                # num_prefix_keys
+                current_chunk_start: int = max_prefix_position + 1 if max_prefix_position >= 0 else 0
                 
-                # Assign contiguous IDs to all current chunk keys starting from current_chunk_start (vectorized)
-                if len(all_current_chunk_key_indices_sorted) > 0:
-                    num_current_chunk_keys: int = len(all_current_chunk_key_indices_sorted)
-                    new_current_chunk_positions: torch.Tensor = torch.arange(
-                        current_chunk_start, current_chunk_start + num_current_chunk_keys,
-                        device=position_ids_k_per_head.device, dtype=torch.long
-                    )
-                    position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted] = new_current_chunk_positions
-                # Diagnostic prints (only if SPARSE_DEBUG enabled)
-                # Commented out verbose per-head details - uncomment if needed for debugging
-                # if debug:
-                #     print(f"\n  [POSITION REASSIGNMENT] Head {head_idx}:")
-                #     
-                #     # Batch extract for diagnostics
-                #     if len(prefix_key_indices_sorted) > 0:
-                #         prefix_original_tensor: torch.Tensor = position_ids_k_actual[0, prefix_key_indices_sorted]
-                #         prefix_assigned_tensor: torch.Tensor = position_ids_k_per_head[0, head_idx, prefix_key_indices_sorted]
-                #         prefix_original_positions: List[int] = prefix_original_tensor.cpu().tolist()
-                #         prefix_assigned_positions: List[int] = prefix_assigned_tensor.cpu().tolist()
-                #         
-                #         print(f"    PREFIX KEYS ({len(prefix_key_indices_sorted)} keys):")
-                #         print(f"      Original positions: {prefix_original_positions[:10]}{'...' if len(prefix_original_positions) > 10 else ''} (max={max(prefix_original_positions)})")
-                #         print(f"      → Reassigned to:     {prefix_assigned_positions[:10]}{'...' if len(prefix_assigned_positions) > 10 else ''}")
-                #         print(f"      ✓ CONTIGUOUS: [0, 1, 2, ..., {len(prefix_assigned_positions)-1}]")
-                #     else:
-                #         print(f"    PREFIX KEYS: 0 keys (no prefix)")
-                #     
-                #     if len(all_current_chunk_key_indices_sorted) > 0:
-                #         current_chunk_original_tensor: torch.Tensor = position_ids_k_actual[0, all_current_chunk_key_indices_sorted]
-                #         current_chunk_assigned_tensor: torch.Tensor = position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted]
-                #         current_chunk_original_positions: List[int] = current_chunk_original_tensor.cpu().tolist()
-                #         current_chunk_assigned_positions: List[int] = current_chunk_assigned_tensor.cpu().tolist()
-                #         
-                #         print(f"    CURRENT CHUNK KEYS ({len(all_current_chunk_key_indices_sorted)} keys):")
-                #         print(f"      Original positions: {current_chunk_original_positions[:10]}{'...' if len(current_chunk_original_positions) > 10 else ''} (range: {min(current_chunk_original_positions)}-{max(current_chunk_original_positions)})")
-                #         print(f"      → Reassigned to:     {current_chunk_assigned_positions[:10]}{'...' if len(current_chunk_assigned_positions) > 10 else ''}")
-                #         print(f"      ✓ CONTIGUOUS: [{current_chunk_start}, {current_chunk_start+1}, ..., {current_chunk_start + len(all_current_chunk_key_indices_sorted) - 1}]")
-                #     else:
-                #         print(f"    CURRENT CHUNK KEYS: 0 keys")
-                #     
-                #     print(f"    Summary: Prefix max_original_pos={max_prefix_position}, Current chunk starts at {current_chunk_start}")
-
-                # Create position_id -> key_index mapping for queries (optimized: batch extract)
-                if len(all_current_chunk_key_indices_sorted) > 0:
-                    # Batch extract original positions and new positions
-                    current_chunk_original_pos_tensor: torch.Tensor = position_ids_k_actual[0, all_current_chunk_key_indices_sorted]  # (num_current_chunk_keys,)
-                    current_chunk_new_positions_tensor: torch.Tensor = position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted]  # (num_current_chunk_keys,)
-                    current_chunk_original_pos_list: List[int] = current_chunk_original_pos_tensor.cpu().tolist()
-                    current_chunk_new_positions_list: List[int] = current_chunk_new_positions_tensor.cpu().tolist()
+                # Assign contiguous IDs to all current chunk keys starting from current_chunk_start
+                for offset, k_idx in enumerate(all_current_chunk_key_indices_sorted):
+                    position_ids_k_per_head[0, head_idx, k_idx] = current_chunk_start + offset
+                
+                import pdb; pdb.set_trace()
+                # ====================================================================
+                # POSITION REASSIGNMENT SUMMARY - Clear Before/After Display
+                # ====================================================================
+                print(f"\n  [POSITION REASSIGNMENT] Head {head_idx}:")
+                
+                # Collect all assigned positions for verification
+                all_prefix_positions_assigned: List[int] = [
+                    position_ids_k_per_head[0, head_idx, k_idx].item() 
+                    for k_idx in prefix_key_indices_sorted
+                ]
+                all_current_chunk_positions_assigned: List[int] = [
+                    position_ids_k_per_head[0, head_idx, k_idx].item() 
+                    for k_idx in all_current_chunk_key_indices_sorted
+                ]
+                
+                # PREFIX KEYS: Show clear contiguous reassignment (0, 1, 2, ...)
+                if len(prefix_key_indices_sorted) > 0:
+                    prefix_original_positions: List[int] = [
+                        position_ids_k_actual[0, k_idx].item() 
+                        for k_idx in prefix_key_indices_sorted
+                    ]
+                    prefix_assigned_positions: List[int] = [
+                        position_ids_k_per_head[0, head_idx, k_idx].item() 
+                        for k_idx in prefix_key_indices_sorted
+                    ]
                     
-                    # Create mapping: original_pos -> new_pos
-                    pos_to_new_pos: Dict[int, int] = dict(zip(current_chunk_original_pos_list, current_chunk_new_positions_list))
+                    print(f"    PREFIX KEYS ({len(prefix_key_indices_sorted)} keys):")
+                    print(f"      Original positions: {prefix_original_positions[:10]}{'...' if len(prefix_original_positions) > 10 else ''} (max={max(prefix_original_positions)})")
+                    print(f"      → Reassigned to:     {prefix_assigned_positions[:10]}{'...' if len(prefix_assigned_positions) > 10 else ''}")
+                    print(f"      ✓ CONTIGUOUS: [0, 1, 2, ..., {len(prefix_assigned_positions)-1}]")
+                    
+                    # Verify contiguity
+                    expected_prefix = list(range(len(prefix_assigned_positions)))
+                    is_contiguous = prefix_assigned_positions == expected_prefix
+                    if not is_contiguous:
+                        print(f"      ⚠️  WARNING: Prefix positions NOT fully contiguous! Expected {expected_prefix[:10]}..., got {prefix_assigned_positions[:10]}...")
                 else:
-                    pos_to_new_pos: Dict[int, int] = {}
+                    print(f"    PREFIX KEYS: 0 keys (no prefix)")
+                
+                # CURRENT CHUNK KEYS: Show clear contiguous reassignment starting from max_prefix+1
+                if len(all_current_chunk_key_indices_sorted) > 0:
+                    current_chunk_original_positions: List[int] = [
+                        position_ids_k_actual[0, k_idx].item() 
+                        for k_idx in all_current_chunk_key_indices_sorted
+                    ]
+                    current_chunk_assigned_positions: List[int] = [
+                        position_ids_k_per_head[0, head_idx, k_idx].item() 
+                        for k_idx in all_current_chunk_key_indices_sorted
+                    ]
+                    
+                    print(f"    CURRENT CHUNK KEYS ({len(all_current_chunk_key_indices_sorted)} keys):")
+                    print(f"      Original positions: {current_chunk_original_positions[:10]}{'...' if len(current_chunk_original_positions) > 10 else ''} (range: {min(current_chunk_original_positions)}-{max(current_chunk_original_positions)})")
+                    print(f"      → Reassigned to:     {current_chunk_assigned_positions[:10]}{'...' if len(current_chunk_assigned_positions) > 10 else ''}")
+                    print(f"      ✓ CONTIGUOUS: [{current_chunk_start}, {current_chunk_start+1}, {current_chunk_start+2}, ..., {current_chunk_start + len(all_current_chunk_key_indices_sorted) - 1}]")
+                    
+                    # Verify contiguity
+                    expected_cc = list(range(current_chunk_start, current_chunk_start + len(all_current_chunk_key_indices_sorted)))
+                    is_contiguous_cc = current_chunk_assigned_positions == expected_cc
+                    if not is_contiguous_cc:
+                        missing = set(expected_cc) - set(current_chunk_assigned_positions)
+                        extra = set(current_chunk_assigned_positions) - set(expected_cc)
+                        print(f"      ⚠️  WARNING: Current chunk NOT fully contiguous! Missing: {sorted(missing)[:10]}, Extra: {sorted(extra)[:10]}")
+                else:
+                    print(f"    CURRENT CHUNK KEYS: 0 keys")
+                
+                print(f"    Summary: Prefix max_original_pos={max_prefix_position}, Current chunk starts at {current_chunk_start}")
+
+                # Create position_id -> key_index mapping for queries
+                pos_to_k_idx: Dict[int, int] = {
+                    position_ids_k_actual[0, k_idx].item(): k_idx
+                    for k_idx in all_current_chunk_key_indices_sorted
+                }
                 
                 # For queries: assign same position ID as corresponding key (optimized: batch operations)
-                query_positions_tensor: torch.Tensor = position_ids_q[0, :]  # (seq_len_q,)
-                query_positions_list: List[int] = query_positions_tensor.cpu().tolist()
+                # Pre-extract all query positions and new key positions to avoid repeated .item() calls
+                query_positions: torch.Tensor = position_ids_q[0, :]  # (seq_len_q,)
+                query_positions_list: List[int] = query_positions.cpu().tolist()
+                
+                # Pre-extract new positions for all current chunk keys (batch operation)
+                # This avoids calling .item() in the loop below
+                current_chunk_new_positions: torch.Tensor = position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted]  # (num_current_chunk_keys,)
+                current_chunk_new_positions_list: List[int] = current_chunk_new_positions.cpu().tolist()
+                
+                # Create mapping: original_pos -> new_pos (using pre-extracted lists)
+                pos_to_new_pos: Dict[int, int] = {
+                    position_ids_k_actual[0, k_idx].item(): new_pos
+                    for k_idx, new_pos in zip(all_current_chunk_key_indices_sorted, current_chunk_new_positions_list)
+                }
                 
                 # Batch lookup and assignment
                 query_new_positions: List[int] = []
@@ -906,96 +933,19 @@ def get_masked_attention_output(
                     query_new_positions, device=position_ids_q_per_head.device, dtype=torch.long
                 )
                 
-                # Diagnostic print for queries (only if SPARSE_DEBUG enabled)
-                # Commented out verbose query position details - uncomment if needed for debugging
-                # if debug and seq_len_q > 0:
-                #     query_assigned_tensor: torch.Tensor = position_ids_q_per_head[0, head_idx, :min(10, seq_len_q)]
-                #     query_original_tensor: torch.Tensor = position_ids_q[0, :min(10, seq_len_q)]
-                #     query_assigned_positions: List[int] = query_assigned_tensor.cpu().tolist()
-                #     query_original_positions: List[int] = query_original_tensor.cpu().tolist()
-                #     print(f"    QUERY POSITIONS ({seq_len_q} queries):")
-                #     print(f"      Original positions: {query_original_positions}{'...' if seq_len_q > 10 else ''}")
-                #     print(f"      → Reassigned to:     {query_assigned_positions}{'...' if seq_len_q > 10 else ''}")
-                #     print(f"      (Queries match their corresponding key positions)")
-            
-            # Print concise position reassignment confirmation (only if SPARSE_DEBUG enabled)
-            if debug:
-                # Show 1-2 random heads (head 0 and middle head)
-                sample_head_indices = [0]
-                if num_heads > 1:
-                    sample_head_indices.append(num_heads // 2)
-                
-                for sample_head_idx in sample_head_indices:
-                    # Get union key indices for this head (keys selected by at least one query)
-                    union_mask: torch.Tensor = torch.any(dense_mask[0, sample_head_idx, :, :] > 0, dim=0)  # (seq_len_k,)
-                    union_key_indices: List[int] = torch.nonzero(union_mask).squeeze(-1).cpu().tolist()
-                    num_union_keys: int = len(union_key_indices)
-                    
-                    # Get prefix and current chunk key indices for this head
-                    prefix_key_indices_for_head: List[int] = [
-                        k_idx for k_idx in range(seq_len_k)
-                        if position_ids_k_actual[0, k_idx].item() < min_query_position
-                    ]
-                    current_chunk_key_indices_for_head: List[int] = [
-                        k_idx for k_idx in range(seq_len_k)
-                        if position_ids_k_actual[0, k_idx].item() >= min_query_position
-                    ]
-                    
-                    # Count union keys in prefix vs current chunk
-                    prefix_union_key_indices: List[int] = [
-                        k_idx for k_idx in union_key_indices
-                        if k_idx in prefix_key_indices_for_head
-                    ]
-                    current_chunk_union_key_indices: List[int] = [
-                        k_idx for k_idx in union_key_indices
-                        if k_idx in current_chunk_key_indices_for_head
-                    ]
-                    num_prefix_union_keys: int = len(prefix_union_key_indices)
-                    num_current_chunk_union_keys: int = len(current_chunk_union_key_indices)
-                    
-                    # Get prefix positions (first 3 and last 3)
-                    if len(prefix_key_indices_for_head) > 0:
-                        prefix_k_indices_sorted = sorted(prefix_key_indices_for_head, key=lambda k_idx: position_ids_k_actual[0, k_idx].item())
-                        prefix_first_3 = prefix_k_indices_sorted[:3]
-                        prefix_last_3 = prefix_k_indices_sorted[-3:] if len(prefix_k_indices_sorted) > 3 else prefix_k_indices_sorted
-                        
-                        prefix_first_3_orig = [position_ids_k_actual[0, k_idx].item() for k_idx in prefix_first_3]
-                        prefix_first_3_new = [position_ids_k_per_head[0, sample_head_idx, k_idx].item() for k_idx in prefix_first_3]
-                        prefix_last_3_orig = [position_ids_k_actual[0, k_idx].item() for k_idx in prefix_last_3]
-                        prefix_last_3_new = [position_ids_k_per_head[0, sample_head_idx, k_idx].item() for k_idx in prefix_last_3]
-                    else:
-                        prefix_first_3_orig = prefix_first_3_new = prefix_last_3_orig = prefix_last_3_new = []
-                    
-                    # Get current chunk positions (first 3 and last 3)
-                    if len(current_chunk_key_indices_for_head) > 0:
-                        current_chunk_k_indices_sorted = sorted(current_chunk_key_indices_for_head, key=lambda k_idx: position_ids_k_actual[0, k_idx].item())
-                        current_chunk_first_3 = current_chunk_k_indices_sorted[:3]
-                        current_chunk_last_3 = current_chunk_k_indices_sorted[-3:] if len(current_chunk_k_indices_sorted) > 3 else current_chunk_k_indices_sorted
-                        
-                        current_chunk_first_3_orig = [position_ids_k_actual[0, k_idx].item() for k_idx in current_chunk_first_3]
-                        current_chunk_first_3_new = [position_ids_k_per_head[0, sample_head_idx, k_idx].item() for k_idx in current_chunk_first_3]
-                        current_chunk_last_3_orig = [position_ids_k_actual[0, k_idx].item() for k_idx in current_chunk_last_3]
-                        current_chunk_last_3_new = [position_ids_k_per_head[0, sample_head_idx, k_idx].item() for k_idx in current_chunk_last_3]
-                    else:
-                        current_chunk_first_3_orig = current_chunk_first_3_new = current_chunk_last_3_orig = current_chunk_last_3_new = []
-                    
-                    # Get query positions (first 3 and last 3)
-                    if seq_len_q > 0:
-                        query_first_3_orig = position_ids_q[0, :3].cpu().tolist()
-                        query_first_3_new = position_ids_q_per_head[0, sample_head_idx, :3].cpu().tolist()
-                        query_last_3_orig = position_ids_q[0, -3:].cpu().tolist() if seq_len_q >= 3 else position_ids_q[0, :].cpu().tolist()
-                        query_last_3_new = position_ids_q_per_head[0, sample_head_idx, -3:].cpu().tolist() if seq_len_q >= 3 else position_ids_q_per_head[0, sample_head_idx, :].cpu().tolist()
-                    else:
-                        query_first_3_orig = query_first_3_new = query_last_3_orig = query_last_3_new = []
-                    
-                    # Print concise summary
-                    print(f"  [Reposition] Head {sample_head_idx}: union={num_union_keys} (prefix={num_prefix_union_keys}, current={num_current_chunk_union_keys})")
-                    if len(prefix_first_3_orig) > 0:
-                        print(f"    Prefix K: first3 orig={prefix_first_3_orig} → new={prefix_first_3_new}, last3 orig={prefix_last_3_orig} → new={prefix_last_3_new}")
-                    if len(current_chunk_first_3_orig) > 0:
-                        print(f"    Current K: first3 orig={current_chunk_first_3_orig} → new={current_chunk_first_3_new}, last3 orig={current_chunk_last_3_orig} → new={current_chunk_last_3_new}")
-                    if len(query_first_3_orig) > 0:
-                        print(f"    Query Q: first3 orig={query_first_3_orig} → new={query_first_3_new}, last3 orig={query_last_3_orig} → new={query_last_3_new}")
+                # QUERY POSITIONS: Show reassignment (queries match their corresponding keys)
+                query_assigned_positions: List[int] = [
+                    position_ids_q_per_head[0, head_idx, q_idx].item() 
+                    for q_idx in range(min(10, seq_len_q))
+                ]
+                query_original_positions: List[int] = [
+                    position_ids_q[0, q_idx].item() 
+                    for q_idx in range(min(10, seq_len_q))
+                ]
+                print(f"    QUERY POSITIONS ({seq_len_q} queries):")
+                print(f"      Original positions: {query_original_positions}{'...' if seq_len_q > 10 else ''}")
+                print(f"      → Reassigned to:     {query_assigned_positions}{'...' if seq_len_q > 10 else ''}")
+                print(f"      (Queries match their corresponding key positions)")
             
             # Compute cos/sin per head with modified positions
             num_kv_heads: int = keys.shape[1]  # GQA: keys may have fewer heads
@@ -1091,12 +1041,9 @@ def get_masked_attention_output(
             # Verify reroped matches original (will be different due to position reassignment)
             reroped_q_diff = torch.abs(queries - reroped_queries).max()
             reroped_k_diff = torch.abs(keys - reroped_keys).max()
-            if debug:
-                # Keep crucial success message
-                print(f"  [SUCCESS] Position reassignment completed (q_diff={reroped_q_diff.item():.6f}, k_diff={reroped_k_diff.item():.6f})")
-                # Commented out verbose verification details - uncomment if needed
-                # print(f"  [Re-roped Verification] q_diff.max()={reroped_q_diff.item():.6f}, k_diff.max()={reroped_k_diff.item():.6f}")
-                # print(f"  [INFO] Position reassignment applied - differences expected (original positions changed)")
+            print(f"  [Re-roped Verification] q_diff.max()={reroped_q_diff.item():.6f}, k_diff.max()={reroped_k_diff.item():.6f}")
+            print(f"  [INFO] Position reassignment applied - differences expected (original positions changed)")
+            print(f"  [SUCCESS] Option 1 repositioning completed successfully")
             
             # Compute attention weights with re-roped Q/K
             exp_attention_weights_reroped: torch.Tensor = _compute_masked_exp_attention_weights(
@@ -1113,211 +1060,215 @@ def get_masked_attention_output(
             # ====================================================================
             # Reuse dense_mask from line 725 (already computed above)
             # dense_mask is already available from position reassignment section
-            # Only compute diagnostics if SPARSE_DEBUG enabled
-            if debug:
-                # Compute key metrics for summary
-                weights_diff_all = torch.abs(exp_attention_weights - exp_attention_weights_reroped)
-                weights_diff = weights_diff_all.max()
-                orig_max = exp_attention_weights.abs().max().item()
-                reroped_max = exp_attention_weights_reroped.abs().max().item()
-                weights_rel_diff = (weights_diff / (orig_max + 1e-8)).item()
+            num_heads: int = exp_attention_weights.shape[1]
+            seq_len_q: int = exp_attention_weights.shape[2]
+            seq_len_k: int = exp_attention_weights.shape[3]
+            
+            # Sample a few queries to analyze
+            sample_queries = [0, seq_len_q // 4, seq_len_q // 2, seq_len_q * 3 // 4, seq_len_q - 1]
+            sample_queries = [q for q in sample_queries if q < seq_len_q]
+            sample_head = 0  # Analyze head 0
+            # import pdb; pdb.set_trace()
+            
+            print(f"\n  [Attention Pattern Comparison] (Selected Keys Only)")
+            for q_idx in sample_queries[:3]:  # Show first 3 sample queries
+                # Get selected key indices for this query
+                selected_k_indices = torch.nonzero(dense_mask[0, sample_head, q_idx] > 0).squeeze(-1).cpu().tolist()
+                if len(selected_k_indices) == 0:
+                    continue
                 
-                # Keep crucial summary - easy to see key metric
-                print(f"  [Attention Weights] max_diff={weights_diff.item():.6f}, rel_diff={weights_rel_diff:.6f} (expected: position IDs changed)")
+                # Get attention scores for selected keys only (before and after)
+                orig_scores_selected = exp_attention_weights[0, sample_head, q_idx, selected_k_indices].cpu()
+                reroped_scores_selected = exp_attention_weights_reroped[0, sample_head, q_idx, selected_k_indices].cpu()
                 
-                # Commented out verbose per-query comparisons - uncomment if needed for debugging
-                # num_heads: int = exp_attention_weights.shape[1]
-                # seq_len_q: int = exp_attention_weights.shape[2]
-                # seq_len_k: int = exp_attention_weights.shape[3]
-                # 
-                # # Sample a few queries to analyze
-                # sample_queries = [0, seq_len_q // 4, seq_len_q // 2, seq_len_q * 3 // 4, seq_len_q - 1]
-                # sample_queries = [q for q in sample_queries if q < seq_len_q]
-                # sample_head = 0  # Analyze head 0
-                # 
-                # print(f"\n  [Attention Pattern Comparison] (Selected Keys Only)")
-                # for q_idx in sample_queries[:3]:  # Show first 3 sample queries
-                #     # Get selected key indices for this query
-                #     selected_k_indices = torch.nonzero(dense_mask[0, sample_head, q_idx] > 0).squeeze(-1).cpu().tolist()
-                #     if len(selected_k_indices) == 0:
-                #         continue
-                #     
-                #     # Get attention scores for selected keys only (before and after)
-                #     orig_scores_selected = exp_attention_weights[0, sample_head, q_idx, selected_k_indices].cpu()
-                #     reroped_scores_selected = exp_attention_weights_reroped[0, sample_head, q_idx, selected_k_indices].cpu()
-                #     
-                #     # Find max key (before and after)
-                #     orig_max_idx_in_selected = torch.argmax(orig_scores_selected).item()
-                #     reroped_max_idx_in_selected = torch.argmax(reroped_scores_selected).item()
-                #     orig_max_k_idx = selected_k_indices[orig_max_idx_in_selected]
-                #     reroped_max_k_idx = selected_k_indices[reroped_max_idx_in_selected]
-                #     
-                #     # Get top-3 keys (before and after)
-                #     orig_top3_values, orig_top3_indices = torch.topk(orig_scores_selected, k=min(3, len(selected_k_indices)))
-                #     reroped_top3_values, reroped_top3_indices = torch.topk(reroped_scores_selected, k=min(3, len(selected_k_indices)))
-                #     orig_top3_k_indices = [selected_k_indices[i.item()] for i in orig_top3_indices]
-                #     reroped_top3_k_indices = [selected_k_indices[i.item()] for i in reroped_top3_indices]
-                #     
-                #     # Compare max key
-                #     max_changed = orig_max_k_idx != reroped_max_k_idx
-                #     max_score_diff = abs(orig_scores_selected[orig_max_idx_in_selected].item() - reroped_scores_selected[reroped_max_idx_in_selected].item())
-                #     
-                #     print(f"    Q{q_idx}: {len(selected_k_indices)} selected keys")
-                #     print(f"      Max key: {orig_max_k_idx} → {reroped_max_k_idx} {'(CHANGED)' if max_changed else '(same)'}, score_diff={max_score_diff:.6f}")
-                #     print(f"      Top-3 keys (orig): {orig_top3_k_indices} with scores {[f'{v.item():.4f}' for v in orig_top3_values]}")
-                #     print(f"      Top-3 keys (reroped): {reroped_top3_k_indices} with scores {[f'{v.item():.4f}' for v in reroped_top3_values]}")
-                #     
-                #     # Check if top-3 changed
-                #     top3_same = set(orig_top3_k_indices) == set(reroped_top3_k_indices)
-                #     print(f"      Top-3 same? {top3_same}")
-                # 
-                # # Compare overall statistics for selected keys
-                # orig_selected_mean = exp_attention_weights[exp_attention_weights > 0].mean().item()
-                # reroped_selected_mean = exp_attention_weights_reroped[exp_attention_weights_reroped > 0].mean().item()
-                # orig_selected_std = exp_attention_weights[exp_attention_weights > 0].std().item()
-                # reroped_selected_std = exp_attention_weights_reroped[exp_attention_weights_reroped > 0].std().item()
-                # 
-                # print(f"    Selected keys stats: mean {orig_selected_mean:.6f} → {reroped_selected_mean:.6f}, std {orig_selected_std:.6f} → {reroped_selected_std:.6f}")
-                # 
-                # threshold_abs = 0.2
-                # threshold_rel = 0.2
-                # abs_ok = weights_diff.item() < threshold_abs
-                # rel_ok = weights_rel_diff < threshold_rel
-                # passed = abs_ok and rel_ok
-                # print(f"  [Attention Weights Verification] max_diff={weights_diff.item():.6f} (threshold={threshold_abs}, ok={abs_ok}), rel_diff={weights_rel_diff:.6f} (threshold={threshold_rel}, ok={rel_ok}) {'✓' if passed else '✗ FAILED'}")
-                # print(f"    Original weights range: [{exp_attention_weights.min().item():.6f}, {orig_max:.6f}], Reroped range: [{exp_attention_weights_reroped.min().item():.6f}, {reroped_max:.6f}]")
-                # print(f"    Note: Large diff expected when using per-head position reassignment (position IDs changed)")
+                # Find max key (before and after)
+                orig_max_idx_in_selected = torch.argmax(orig_scores_selected).item()
+                reroped_max_idx_in_selected = torch.argmax(reroped_scores_selected).item()
+                orig_max_k_idx = selected_k_indices[orig_max_idx_in_selected]
+                reroped_max_k_idx = selected_k_indices[reroped_max_idx_in_selected]
                 
-                # Commented out detailed attention weights comparison - uncomment if needed for debugging
-                # ====================================================================
-                # Detailed Attention Weights Comparison (Original vs Repositioned)
-                # ====================================================================
-                # weights_diff_tensor: torch.Tensor = torch.abs(exp_attention_weights - exp_attention_weights_reroped)
-                # 
-                # # Find where max_diff in attention weights occurs
-                # weights_max_diff_flat_idx = weights_diff_tensor.argmax()
-                # weights_max_indices = torch.unravel_index(weights_max_diff_flat_idx.cpu(), weights_diff_tensor.shape)
-                # w_batch, w_head, w_query, w_key = weights_max_indices[0].item(), weights_max_indices[1].item(), weights_max_indices[2].item(), weights_max_indices[3].item()
-                # 
-                # # Get percentiles of weight differences (selected keys only)
-                # weights_diff_selected = weights_diff_tensor * dense_mask  # Only selected keys
-                # weights_diff_flat = weights_diff_selected[weights_diff_selected > 0].flatten().cpu().float()
-                # if len(weights_diff_flat) > 0:
-                #     percentiles = [50, 75, 90, 95, 99, 99.9]
-                #     max_quantile_size = 1000000  # 1M elements max for quantile
-                #     if len(weights_diff_flat) > max_quantile_size:
-                #         sample_indices = torch.randperm(len(weights_diff_flat), device=weights_diff_flat.device)[:max_quantile_size]
-                #         weights_diff_sampled = weights_diff_flat[sample_indices]
-                #         percentile_values = [torch.quantile(weights_diff_sampled, p/100.0).item() for p in percentiles]
-                #     else:
-                #         percentile_values = [torch.quantile(weights_diff_flat, p/100.0).item() for p in percentiles]
-                # else:
-                #     percentile_values = [0.0] * 6
-                # 
-                # # Get top-K query-key pairs with largest weight differences
-                # top_k = min(10, weights_diff_tensor.numel())
-                # weights_diff_flat_all = weights_diff_tensor.flatten().cpu().float()
-                # top_k_values, top_k_indices = torch.topk(weights_diff_flat_all, k=top_k)
-                # top_k_positions = []
-                # for idx in top_k_indices:
-                #     pos = torch.unravel_index(idx.cpu(), weights_diff_tensor.shape)
-                #     top_k_positions.append((pos[0].item(), pos[1].item(), pos[2].item(), pos[3].item()))
-                # 
-                # # Per-head statistics for attention weights
-                # weights_diff_per_head = weights_diff_selected.mean(dim=(0, 2, 3))
-                # head_max_weight_diffs = torch.amax(weights_diff_selected, dim=(0, 2, 3))
-                # 
-                # print(f"\n  [Attention Weights Detailed Comparison]")
-                # print(f"    Max weight diff: {weights_diff.item():.6f} at batch={w_batch}, head={w_head}, query={w_query}, key={w_key}")
-                # print(f"      Original weight: {exp_attention_weights[w_batch, w_head, w_query, w_key].item():.6f}")
-                # print(f"      Repositioned weight: {exp_attention_weights_reroped[w_batch, w_head, w_query, w_key].item():.6f}")
-                # print(f"      Difference: {weights_diff_tensor[w_batch, w_head, w_query, w_key].item():.6f}")
-                # 
-                # if len(weights_diff_flat) > 0:
-                #     print(f"\n    [Weight Difference Percentiles (Selected Keys Only)]")
-                #     for p, v in zip(percentiles, percentile_values):
-                #         print(f"      {p}th percentile: {v:.6f}")
-                # 
-                # # Debug: Compute raw QK^T scores (before normalization) for comparison
-                # num_key_value_groups: int = _get_num_key_value_groups(queries, keys)
-                # key_states_orig = repeat_kv(keys, num_key_value_groups)
-                # key_states_reroped = repeat_kv(reroped_keys, num_key_value_groups)
-                # 
-                # raw_scores_orig = (torch.matmul(queries, key_states_orig.transpose(2, 3)) * scaling)
-                # raw_scores_reroped = (torch.matmul(reroped_queries, key_states_reroped.transpose(2, 3)) * scaling)
-                # 
-                # # Get row-wise max for both
-                # row_max_orig = raw_scores_orig.max(dim=-1, keepdim=True)[0]
-                # row_max_reroped = raw_scores_reroped.max(dim=-1, keepdim=True)[0]
-                # 
-                # print(f"\n    [Top-{min(5, top_k)} Query-Key Pairs with Largest Weight Differences]")
-                # for i, (val, pos) in enumerate(zip(top_k_values[:5], top_k_positions[:5])):
-                #     b, h, q, k = pos
-                #     orig_w = exp_attention_weights[b, h, q, k].item()
-                #     reroped_w = exp_attention_weights_reroped[b, h, q, k].item()
-                #     is_selected = dense_mask[b, h, q, k].item() > 0
-                #     
-                #     # Get raw QK^T scores (before normalization)
-                #     raw_orig = raw_scores_orig[b, h, q, k].item()
-                #     raw_reroped = raw_scores_reroped[b, h, q, k].item()
-                #     
-                #     # Get row-wise max for this query
-                #     row_max_orig_q = row_max_orig[b, h, q, 0].item()
-                #     row_max_reroped_q = row_max_reroped[b, h, q, 0].item()
-                #     
-                #     # Get normalized scores (before exp)
-                #     normalized_orig = raw_orig - row_max_orig_q
-                #     normalized_reroped = raw_reroped - row_max_reroped_q
-                #     
-                #     # Find which key is max in this row
-                #     max_key_orig = raw_scores_orig[b, h, q, :].argmax().item()
-                #     max_key_reroped = raw_scores_reroped[b, h, q, :].argmax().item()
-                #     
-                #     print(f"      #{i+1}: diff={val.item():.6f} at head={h}, query={q}, key={k} {'(selected)' if is_selected else '(NOT selected)'}")
-                #     print(f"         orig_weight={orig_w:.6f}, reroped_weight={reroped_w:.6f}")
-                #     print(f"         Raw QK^T: orig={raw_orig:.6f}, reroped={raw_reroped:.6f}, diff={raw_orig - raw_reroped:.6f}")
-                #     print(f"         Row max: orig={row_max_orig_q:.6f} (key {max_key_orig}), reroped={row_max_reroped_q:.6f} (key {max_key_reroped})")
-                #     print(f"         Normalized (before exp): orig={normalized_orig:.6f}, reroped={normalized_reroped:.6f}")
-                #     if max_key_orig != max_key_reroped:
-                #         print(f"         ⚠️  MAX KEY CHANGED: {max_key_orig} → {max_key_reroped}")
-                # 
-                # print(f"\n    [Per-Head Weight Differences (Selected Keys Only)]")
-                # for h_idx in range(min(8, len(head_max_weight_diffs))):  # Show first 8 heads
-                #     print(f"      Head {h_idx}: max_diff={head_max_weight_diffs[h_idx].item():.6f}, mean_diff={weights_diff_per_head[h_idx].item():.6f}")
-                # 
-                # # Analyze ranking changes for sample queries
-                # print(f"\n    [Ranking Changes for Sample Queries]")
-                # sample_queries_weights = [0, seq_len_q // 4, seq_len_q // 2] if seq_len_q > 1 else [0]
-                # for q_idx in sample_queries_weights[:3]:
-                #     if q_idx >= seq_len_q:
-                #         continue
-                #     # Get selected keys for this query
-                #     selected_k_indices = torch.nonzero(dense_mask[0, sample_head, q_idx] > 0).squeeze(-1).cpu().tolist()
-                #     if len(selected_k_indices) == 0:
-                #         continue
-                #     
-                #     # Get attention scores for selected keys
-                #     orig_scores = exp_attention_weights[0, sample_head, q_idx, selected_k_indices].cpu()
-                #     reroped_scores = exp_attention_weights_reroped[0, sample_head, q_idx, selected_k_indices].cpu()
-                #     
-                #     # Get rankings (indices sorted by score, descending)
-                #     orig_rankings = torch.argsort(orig_scores, descending=True)
-                #     reroped_rankings = torch.argsort(reroped_scores, descending=True)
-                #     
-                #     # Check how many keys changed rank
-                #     orig_ranked_keys = [selected_k_indices[i.item()] for i in orig_rankings]
-                #     reroped_ranked_keys = [selected_k_indices[i.item()] for i in reroped_rankings]
-                #     
-                #     # Count rank changes
-                #     rank_changes = sum(1 for i, (ok, rk) in enumerate(zip(orig_ranked_keys, reroped_ranked_keys)) if ok != rk)
-                #     
-                #     # Get top-5 scores for display
-                #     top5_orig_scores = [orig_scores[orig_rankings[i]].item() for i in range(min(5, len(orig_rankings)))]
-                #     top5_reroped_scores = [reroped_scores[reroped_rankings[i]].item() for i in range(min(5, len(reroped_rankings)))]
-                #     
-                #     print(f"      Q{q_idx}: {len(selected_k_indices)} selected keys, {rank_changes} keys changed rank")
-                #     print(f"        Top-5 orig: keys={orig_ranked_keys[:5]}, scores={[f'{s:.4f}' for s in top5_orig_scores]}")
-                #     print(f"        Top-5 reroped: keys={reroped_ranked_keys[:5]}, scores={[f'{s:.4f}' for s in top5_reroped_scores]}")
+                # Get top-3 keys (before and after)
+                orig_top3_values, orig_top3_indices = torch.topk(orig_scores_selected, k=min(3, len(selected_k_indices)))
+                reroped_top3_values, reroped_top3_indices = torch.topk(reroped_scores_selected, k=min(3, len(selected_k_indices)))
+                orig_top3_k_indices = [selected_k_indices[i.item()] for i in orig_top3_indices]
+                reroped_top3_k_indices = [selected_k_indices[i.item()] for i in reroped_top3_indices]
+                
+                # Compare max key
+                max_changed = orig_max_k_idx != reroped_max_k_idx
+                max_score_diff = abs(orig_scores_selected[orig_max_idx_in_selected].item() - reroped_scores_selected[reroped_max_idx_in_selected].item())
+                
+                print(f"    Q{q_idx}: {len(selected_k_indices)} selected keys")
+                print(f"      Max key: {orig_max_k_idx} → {reroped_max_k_idx} {'(CHANGED)' if max_changed else '(same)'}, score_diff={max_score_diff:.6f}")
+                print(f"      Top-3 keys (orig): {orig_top3_k_indices} with scores {[f'{v.item():.4f}' for v in orig_top3_values]}")
+                print(f"      Top-3 keys (reroped): {reroped_top3_k_indices} with scores {[f'{v.item():.4f}' for v in reroped_top3_values]}")
+                
+                # Check if top-3 changed
+                top3_same = set(orig_top3_k_indices) == set(reroped_top3_k_indices)
+                print(f"      Top-3 same? {top3_same}")
+            
+            # Compare overall statistics for selected keys
+            # Note: exp_attention_weights already has zeros for non-selected keys (mask applied in _compute_masked_exp_attention_weights)
+            orig_selected_mean = exp_attention_weights[exp_attention_weights > 0].mean().item()
+            reroped_selected_mean = exp_attention_weights_reroped[exp_attention_weights_reroped > 0].mean().item()
+            orig_selected_std = exp_attention_weights[exp_attention_weights > 0].std().item()
+            reroped_selected_std = exp_attention_weights_reroped[exp_attention_weights_reroped > 0].std().item()
+            
+            print(f"    Selected keys stats: mean {orig_selected_mean:.6f} → {reroped_selected_mean:.6f}, std {orig_selected_std:.6f} → {reroped_selected_std:.6f}")
+            
+
+            
+            # Assert they match original (verify unrope→rope round-trip preserves attention weights)
+            # Compute diff only over selected keys (non-selected are already zeroed by mask in _compute_masked_exp_attention_weights)
+            weights_diff_all = torch.abs(exp_attention_weights - exp_attention_weights_reroped)
+            # Note: Both tensors already have zeros for non-selected keys, so max naturally comes from selected keys
+            weights_diff = weights_diff_all.max()  # Max diff (will be from selected keys since non-selected are 0 in both)
+            # Relative error (for exp values, small absolute diff can be significant)
+            orig_max = exp_attention_weights.abs().max().item()
+            reroped_max = exp_attention_weights_reroped.abs().max().item()
+            weights_rel_diff = (weights_diff / (orig_max + 1e-8)).item()
+            # Use relaxed tolerance for exp attention weights (exp amplifies small numerical differences)
+            # 5% relative error is acceptable for exp operations with floating point precision
+            threshold_abs = 0.2  # 5% absolute
+            threshold_rel = 0.2  # 5% relative
+            abs_ok = weights_diff.item() < threshold_abs
+            rel_ok = weights_rel_diff < threshold_rel
+            passed = abs_ok and rel_ok
+            print(f"  [Attention Weights Verification] max_diff={weights_diff.item():.6f} (threshold={threshold_abs}, ok={abs_ok}), rel_diff={weights_rel_diff:.6f} (threshold={threshold_rel}, ok={rel_ok}) {'✓' if passed else '✗ FAILED'}")
+            print(f"    Original weights range: [{exp_attention_weights.min().item():.6f}, {orig_max:.6f}], Reroped range: [{exp_attention_weights_reroped.min().item():.6f}, {reroped_max:.6f}]")
+            print(f"    Note: Large diff expected when using per-head position reassignment (position IDs changed)")
+            
+            # ====================================================================
+            # Detailed Attention Weights Comparison (Original vs Repositioned)
+            # ====================================================================
+            # Focus on attention weights only (not final output with values)
+            weights_diff_tensor: torch.Tensor = torch.abs(exp_attention_weights - exp_attention_weights_reroped)
+            
+            # Find where max_diff in attention weights occurs
+            weights_max_diff_flat_idx = weights_diff_tensor.argmax()
+            weights_max_indices = torch.unravel_index(weights_max_diff_flat_idx.cpu(), weights_diff_tensor.shape)
+            w_batch, w_head, w_query, w_key = weights_max_indices[0].item(), weights_max_indices[1].item(), weights_max_indices[2].item(), weights_max_indices[3].item()
+            
+            # Get percentiles of weight differences (selected keys only)
+            weights_diff_selected = weights_diff_tensor * dense_mask  # Only selected keys
+            weights_diff_flat = weights_diff_selected[weights_diff_selected > 0].flatten().cpu().float()
+            if len(weights_diff_flat) > 0:
+                percentiles = [50, 75, 90, 95, 99, 99.9]
+                # PyTorch quantile() has size limits, so sample if tensor is too large
+                max_quantile_size = 1000000  # 1M elements max for quantile
+                if len(weights_diff_flat) > max_quantile_size:
+                    # Sample randomly to reduce size
+                    sample_indices = torch.randperm(len(weights_diff_flat), device=weights_diff_flat.device)[:max_quantile_size]
+                    weights_diff_sampled = weights_diff_flat[sample_indices]
+                    percentile_values = [torch.quantile(weights_diff_sampled, p/100.0).item() for p in percentiles]
+                else:
+                    percentile_values = [torch.quantile(weights_diff_flat, p/100.0).item() for p in percentiles]
+            else:
+                percentile_values = [0.0] * 6
+            
+            # Get top-K query-key pairs with largest weight differences
+            top_k = min(10, weights_diff_tensor.numel())
+            weights_diff_flat_all = weights_diff_tensor.flatten().cpu().float()
+            top_k_values, top_k_indices = torch.topk(weights_diff_flat_all, k=top_k)
+            top_k_positions = []
+            for idx in top_k_indices:
+                pos = torch.unravel_index(idx.cpu(), weights_diff_tensor.shape)
+                top_k_positions.append((pos[0].item(), pos[1].item(), pos[2].item(), pos[3].item()))
+            
+            # Per-head statistics for attention weights
+            weights_diff_per_head = weights_diff_selected.mean(dim=(0, 2, 3))  # Average over batch, queries, keys -> (num_heads,)
+            head_max_weight_diffs = torch.amax(weights_diff_selected, dim=(0, 2, 3))  # Max over batch, queries, keys -> (num_heads,)
+            
+            print(f"\n  [Attention Weights Detailed Comparison]")
+            print(f"    Max weight diff: {weights_diff.item():.6f} at batch={w_batch}, head={w_head}, query={w_query}, key={w_key}")
+            print(f"      Original weight: {exp_attention_weights[w_batch, w_head, w_query, w_key].item():.6f}")
+            print(f"      Repositioned weight: {exp_attention_weights_reroped[w_batch, w_head, w_query, w_key].item():.6f}")
+            print(f"      Difference: {weights_diff_tensor[w_batch, w_head, w_query, w_key].item():.6f}")
+            
+            if len(weights_diff_flat) > 0:
+                print(f"\n    [Weight Difference Percentiles (Selected Keys Only)]")
+                for p, v in zip(percentiles, percentile_values):
+                    print(f"      {p}th percentile: {v:.6f}")
+            
+            # Debug: Compute raw QK^T scores (before normalization) for comparison
+            num_key_value_groups: int = _get_num_key_value_groups(queries, keys)
+            key_states_orig = repeat_kv(keys, num_key_value_groups)
+            key_states_reroped = repeat_kv(reroped_keys, num_key_value_groups)
+            
+            raw_scores_orig = (torch.matmul(queries, key_states_orig.transpose(2, 3)) * scaling)
+            raw_scores_reroped = (torch.matmul(reroped_queries, key_states_reroped.transpose(2, 3)) * scaling)
+            
+            # Get row-wise max for both
+            row_max_orig = raw_scores_orig.max(dim=-1, keepdim=True)[0]
+            row_max_reroped = raw_scores_reroped.max(dim=-1, keepdim=True)[0]
+            
+            print(f"\n    [Top-{min(5, top_k)} Query-Key Pairs with Largest Weight Differences]")
+            for i, (val, pos) in enumerate(zip(top_k_values[:5], top_k_positions[:5])):
+                b, h, q, k = pos
+                orig_w = exp_attention_weights[b, h, q, k].item()
+                reroped_w = exp_attention_weights_reroped[b, h, q, k].item()
+                is_selected = dense_mask[b, h, q, k].item() > 0
+                
+                # Get raw QK^T scores (before normalization)
+                raw_orig = raw_scores_orig[b, h, q, k].item()
+                raw_reroped = raw_scores_reroped[b, h, q, k].item()
+                
+                # Get row-wise max for this query
+                row_max_orig_q = row_max_orig[b, h, q, 0].item()
+                row_max_reroped_q = row_max_reroped[b, h, q, 0].item()
+                
+                # Get normalized scores (before exp)
+                normalized_orig = raw_orig - row_max_orig_q
+                normalized_reroped = raw_reroped - row_max_reroped_q
+                
+                # Find which key is max in this row
+                max_key_orig = raw_scores_orig[b, h, q, :].argmax().item()
+                max_key_reroped = raw_scores_reroped[b, h, q, :].argmax().item()
+                
+                print(f"      #{i+1}: diff={val.item():.6f} at head={h}, query={q}, key={k} {'(selected)' if is_selected else '(NOT selected)'}")
+                print(f"         orig_weight={orig_w:.6f}, reroped_weight={reroped_w:.6f}")
+                print(f"         Raw QK^T: orig={raw_orig:.6f}, reroped={raw_reroped:.6f}, diff={raw_orig - raw_reroped:.6f}")
+                print(f"         Row max: orig={row_max_orig_q:.6f} (key {max_key_orig}), reroped={row_max_reroped_q:.6f} (key {max_key_reroped})")
+                print(f"         Normalized (before exp): orig={normalized_orig:.6f}, reroped={normalized_reroped:.6f}")
+                if max_key_orig != max_key_reroped:
+                    print(f"         ⚠️  MAX KEY CHANGED: {max_key_orig} → {max_key_reroped}")
+            
+            print(f"\n    [Per-Head Weight Differences (Selected Keys Only)]")
+            for h_idx in range(min(8, len(head_max_weight_diffs))):  # Show first 8 heads
+                print(f"      Head {h_idx}: max_diff={head_max_weight_diffs[h_idx].item():.6f}, mean_diff={weights_diff_per_head[h_idx].item():.6f}")
+            
+            # Analyze ranking changes for sample queries
+            print(f"\n    [Ranking Changes for Sample Queries]")
+            sample_queries_weights = [0, seq_len_q // 4, seq_len_q // 2] if seq_len_q > 1 else [0]
+            for q_idx in sample_queries_weights[:3]:
+                if q_idx >= seq_len_q:
+                    continue
+                # Get selected keys for this query
+                selected_k_indices = torch.nonzero(dense_mask[0, sample_head, q_idx] > 0).squeeze(-1).cpu().tolist()
+                if len(selected_k_indices) == 0:
+                    continue
+                
+                # Get attention scores for selected keys
+                orig_scores = exp_attention_weights[0, sample_head, q_idx, selected_k_indices].cpu()
+                reroped_scores = exp_attention_weights_reroped[0, sample_head, q_idx, selected_k_indices].cpu()
+                
+                # Get rankings (indices sorted by score, descending)
+                orig_rankings = torch.argsort(orig_scores, descending=True)
+                reroped_rankings = torch.argsort(reroped_scores, descending=True)
+                
+                # Check how many keys changed rank
+                orig_ranked_keys = [selected_k_indices[i.item()] for i in orig_rankings]
+                reroped_ranked_keys = [selected_k_indices[i.item()] for i in reroped_rankings]
+                
+                # Count rank changes
+                rank_changes = sum(1 for i, (ok, rk) in enumerate(zip(orig_ranked_keys, reroped_ranked_keys)) if ok != rk)
+                
+                # Get top-5 scores for display
+                top5_orig_scores = [orig_scores[orig_rankings[i]].item() for i in range(min(5, len(orig_rankings)))]
+                top5_reroped_scores = [reroped_scores[reroped_rankings[i]].item() for i in range(min(5, len(reroped_rankings)))]
+                
+                print(f"      Q{q_idx}: {len(selected_k_indices)} selected keys, {rank_changes} keys changed rank")
+                print(f"        Top-5 orig: keys={orig_ranked_keys[:5]}, scores={[f'{s:.4f}' for s in top5_orig_scores]}")
+                print(f"        Top-5 reroped: keys={reroped_ranked_keys[:5]}, scores={[f'{s:.4f}' for s in top5_reroped_scores]}")
             
             # assert passed, f"Re-roped attention weights don't match original: diff={weights_diff.item()}, rel_diff={weights_rel_diff:.6f} (thresholds: abs<{threshold_abs}, rel<{threshold_rel})"
             # Overwrite with re-roped version after verification (cast to original dtype to match model precision)
@@ -1348,28 +1299,17 @@ def get_masked_attention_output(
         except Exception as e:
             assert False, f"  [Unroped/Re-roped] Exception: {e}"
         
-        # Final diagnostic prints (only if SPARSE_DEBUG enabled)
-        if debug:
-            # Keep crucial summary - easy to see key info
-            mask_density = sparse_attention_mask.get_density()
-            print(f"  [Attention] mask_density={mask_density:.4f}, queries.shape={queries.shape}, keys.shape={keys.shape}")
-            
-            # Commented out verbose per-head/per-query details - uncomment if needed for debugging
-            # if position_ids_q is not None:
-            #     min_q_pos = position_ids_q[0, 0].item()
-            #     max_q_pos = position_ids_q[0, -1].item()
-            #     print(f"  Query position_ids: {min_q_pos}...{max_q_pos}")
-            # else:
-            #     print(f"  Query position_ids: N/A")
-            # print(f"  Key position_ids: 0...{seq_len_keys-1}")
-            # for head_idx in sample_heads:
-            #     print(f"\n  Head {head_idx}:")
-            #     for q_idx in sample_queries:
-            #         active_keys = torch.nonzero(dense_mask[0, head_idx, q_idx] > 0).squeeze(-1).cpu().tolist()
-            #         active_keys_sorted = sorted(active_keys)
-            #         print(f"    Q{q_idx}: attends to {len(active_keys)}/{keys.shape[2]} keys")
-            #         print(f"      Key positions: {active_keys_sorted[:30]}{'...' if len(active_keys_sorted) > 30 else ''}{active_keys_sorted[-10:] if len(active_keys_sorted) > 40 else ''}")
-            # print()  # Extra newline for readability
+        print(f"\n[Attention Pattern] queries.shape={queries.shape}, keys.shape={keys.shape}, mask_density={sparse_attention_mask.get_density():.4f}")
+        print(f"  Query position_ids: {position_ids_q[0, 0].item() if position_ids_q is not None else 'N/A'}...{position_ids_q[0, -1].item() if position_ids_q is not None else 'N/A'}")
+        print(f"  Key position_ids: 0...{seq_len_keys-1}")
+        for head_idx in sample_heads:
+            print(f"\n  Head {head_idx}:")
+            for q_idx in sample_queries:
+                active_keys = torch.nonzero(dense_mask[0, head_idx, q_idx] > 0).squeeze(-1).cpu().tolist()
+                active_keys_sorted = sorted(active_keys)
+                print(f"    Q{q_idx}: attends to {len(active_keys)}/{keys.shape[2]} keys")
+                print(f"      Key positions: {active_keys_sorted[:30]}{'...' if len(active_keys_sorted) > 30 else ''}{active_keys_sorted[-10:] if len(active_keys_sorted) > 40 else ''}")
+        print()  # Extra newline for readability
 
     # Prepare values by applying key-value grouping
     num_key_value_groups: int = _get_num_key_value_groups(queries, values)

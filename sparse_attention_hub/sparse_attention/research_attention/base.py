@@ -26,6 +26,7 @@ from .rope_utils import (
 
 MicroMetricLogger.register_metric("research_attention_density", float)
 MicroMetricLogger.register_metric("research_attention_output_error", float)
+MicroMetricLogger.register_metric("research_attention_weight_diff", dict)
 
 
 @dataclass
@@ -489,6 +490,85 @@ class ResearchAttention(SparseAttention):
                 float(error.item()),
                 metadata={"layer_idx": kwargs["layer_idx"]},
             )
+
+        # Log attention weight differences (sparse vs dense) for sampled layers and heads
+        # Memory-efficient: only compute for 1-2 layers to avoid OOM
+        # import pdb; pdb.set_trace()
+        if MicroMetricLogger().is_metric_enabled("research_attention_weight_diff"):
+            layer_idx: int = kwargs["layer_idx"]
+            # Sample only 1-2 layers to reduce memory usage (compute dense attention is expensive)
+            sample_layers: List[int] = [15]  # Just first and middle layer
+            
+            if layer_idx in sample_layers and attention_weights is not None:
+                try:
+                    # Get dense attention weights (memory intensive - may fail on large sequences)
+                    _, dense_attention_weights = get_true_attention_output(
+                        module,
+                        queries,
+                        keys,
+                        values,
+                        attention_mask,
+                        scaling,
+                        dropout,
+                        **kwargs,
+                    )
+                    
+                    # Ensure shapes match
+                    if dense_attention_weights.shape == attention_weights.shape:
+                        # Sample only 1 head to reduce memory (head 0)
+                        num_heads: int = attention_weights.shape[1]
+                        sample_heads: List[int] = [10]  # Just first head
+                        
+                        for head_idx in sample_heads:
+                            sparse_weights_head: torch.Tensor = attention_weights[:, head_idx, :, :]  # (batch, seq_q, seq_k)
+                            dense_weights_head: torch.Tensor = dense_attention_weights[:, head_idx, :, :]
+                            
+                            # Get shape information for context
+                            batch_size: int = attention_weights.shape[0]
+                            seq_len_q: int = attention_weights.shape[2]
+                            seq_len_k: int = attention_weights.shape[3]
+                            queries_shape: Tuple[int, ...] = queries.shape
+                            keys_shape: Tuple[int, ...] = keys.shape
+                            
+                            # Compute differences (move to CPU if needed to save GPU memory)
+                            with torch.no_grad():
+                                diff: torch.Tensor = torch.abs(sparse_weights_head - dense_weights_head)
+                                max_diff: float = diff.max().item()
+                                mean_diff: float = diff.mean().item()
+                                l2_diff: float = torch.norm(sparse_weights_head - dense_weights_head).item()
+                            
+                            # Log per head with comprehensive metrics and shape context
+                            MicroMetricLogger().log(
+                                "research_attention_weight_diff",
+                                {
+                                    "max_diff": max_diff,
+                                    "mean_diff": mean_diff,
+                                    "l2_diff": l2_diff,
+                                },
+                                metadata={
+                                    "layer_idx": layer_idx,
+                                    "head_idx": head_idx,
+                                    "batch_size": batch_size,
+                                    "seq_len_q": seq_len_q,
+                                    "seq_len_k": seq_len_k,
+                                    "queries_shape": list(queries_shape),
+                                    "keys_shape": list(keys_shape),
+                                    "attention_shape": list(attention_weights.shape),
+                                },
+                            )
+                    
+                    # Clean up dense attention weights immediately to free memory
+                    del dense_attention_weights
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                        
+                except RuntimeError as e:
+                    if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
+                        # Silently skip if OOM - don't crash the run
+                        pass
+                    else:
+                        # Re-raise if it's a different error
+                        raise
 
         return attention_output, attention_weights
 

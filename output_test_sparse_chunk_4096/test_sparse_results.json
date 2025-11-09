@@ -1,0 +1,86 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 1.3015968799591064
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 1.064147710800171
+    },
+    {
+      "response": " Lowell",
+      "elapsed_s": 1.0187549591064453
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 1.0266289710998535
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 0.8707635402679443
+    },
+    {
+      "response": " Channel 4",
+      "elapsed_s": 0.9036695957183838
+    },
+    {
+      "response": " Mayiladuthurai",
+      "elapsed_s": 1.0429809093475342
+    },
+    {
+      "response": " Pueraria",
+      "elapsed_s": 0.15013670921325684
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 0.7049226760864258
+    },
+    {
+      "response": " Noelle Scaggs",
+      "elapsed_s": 0.500734806060791
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 4.366469383239746
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 11.950880765914917
+    },
+    {
+      "response": " Howell",
+      "elapsed_s": 11.007057189941406
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 10.821238279342651
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 9.363143682479858
+    },
+    {
+      "response": " Prime Minister",
+      "elapsed_s": 6.767065048217773
+    },
+    {
+      "response": " Mayiladuthurai",
+      "elapsed_s": 8.773487091064453
+    },
+    {
+      "response": " Pueraria",
+      "elapsed_s": 0.25379228591918945
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 4.772592067718506
+    },
+    {
+      "response": " Noelle Scaggs",
+      "elapsed_s": 5.024490833282471
+    }
+  ]
+}

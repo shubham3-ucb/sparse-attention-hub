@@ -26,6 +26,7 @@ from sparse_attention_hub.sparse_attention.research_attention.maskers.fixed.impl
     LocalMaskerConfig,
     OracleTopKConfig,
 )
+from sparse_attention_hub.metric_logging.logger import MicroMetricLogger
 from benchmark.benchmark_registry import create_benchmark_instance
 
 
@@ -43,6 +44,14 @@ def run_example(
     device = "cuda" if torch.cuda.is_available() else "cpu"
     out_dir = os.environ.get("OUTPUT_DIR", os.path.join(os.getcwd(), "output_test_sparse"))
     os.makedirs(out_dir, exist_ok=True)
+    
+    # Configure MicroMetricLogger to enable attention weight difference logging
+    metric_logger = MicroMetricLogger()
+    metric_logger.configure_logging(
+        log_path=out_dir,
+        enabled_metrics=["research_attention_weight_diff"],
+    )
+    print(f"[MicroMetrics] Enabled metrics: {metric_logger.get_enabled_metrics()}")
 
     ds = load_dataset("Xnhyacinth/LongBench", "hotpotqa", split="test")
     ds = ds.select(list(range(min(num_samples, len(ds)))))
@@ -119,70 +128,126 @@ def run_example(
 
     results = {"dense": [], "sparse": []}
     rows = []
+    
+    # Initialize CSV file with header (will append rows incrementally)
+    csv_path = os.path.join(out_dir, "raw_results.csv")
+    df_header = pd.DataFrame(columns=["context", "question", "predicted_answer", "elapsed_s", "answers", "task", "method", "all_classes"])
+    df_header.to_csv(csv_path, index=False)
 
     for i, sample in enumerate(ds):
+        print(f"\n{'='*80}")
+        print(f"Processing sample {i+1}/{len(ds)}")
+        print(f"{'='*80}")
+        
         context = sample.get("context", "")
         question = sample.get("question", "")
         if not context or not question:
+            print(f"  ⚠️  Skipping sample {i+1}: missing context or question")
             continue
         req = Request(context=context, questions=question, answer_prefix=sample.get("answer_prefix", "Answer: "))
 
+        print(f"  Question: {question[:100]}{'...' if len(question) > 100 else ''}")
+        print(f"  Context length: {len(context)} chars")
+
+        # Dense inference
+        print(f"  [Dense] Processing...")
         t0 = time.time()
         r_dense = adapter_dense.process_request(req, generation_kwargs, request_kwargs)
         t1 = time.time()
         dense_out = r_dense.responses
-        results["dense"].append({"response": dense_out, "elapsed_s": t1 - t0})
+        dense_elapsed = t1 - t0
+        results["dense"].append({"response": dense_out, "elapsed_s": dense_elapsed})
+        print(f"  [Dense] Response: {dense_out}")
+        print(f"  [Dense] Elapsed: {dense_elapsed:.2f}s")
 
+        # Sparse inference
+        print(f"  [Sparse] Processing...")
         t0 = time.time()
         r_sparse = adapter_sparse.process_request(req, generation_kwargs, request_kwargs)
         t1 = time.time()
         sparse_out = r_sparse.responses
-        results["sparse"].append({"response": sparse_out, "elapsed_s": t1 - t0})
+        sparse_elapsed = t1 - t0
+        results["sparse"].append({"response": sparse_out, "elapsed_s": sparse_elapsed})
+        print(f"  [Sparse] Response: {sparse_out}")
+        print(f"  [Sparse] Elapsed: {sparse_elapsed:.2f}s")
 
-        # import pdb; pdb.set_trace()
-        # Free cache
+        # Free cache and flush metrics periodically
         try:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+            # Flush metrics after each sample to ensure they're written
+            metric_logger.flush()
         except Exception:
             pass
 
-        rows.append({
+        # Add rows
+        dense_row = {
             "context": context,
             "question": question,
             "predicted_answer": dense_out,
-            "elapsed_s": results["dense"][-1]["elapsed_s"],
+            "elapsed_s": dense_elapsed,
             "answers": sample.get("answers", None),
             "task": "hotpotqa",
             "method": "dense",
             "all_classes": sample.get("all_classes", []),
-        })
-        rows.append({
+        }
+        sparse_row = {
             "context": context,
             "question": question,
             "predicted_answer": sparse_out,
-            "elapsed_s": results["sparse"][-1]["elapsed_s"],
+            "elapsed_s": sparse_elapsed,
             "answers": sample.get("answers", None),
             "task": "hotpotqa",
             "method": "sparse",
             "all_classes": sample.get("all_classes", []),
-        })
+        }
+        rows.append(dense_row)
+        rows.append(sparse_row)
+        
+        # Save incrementally: append to CSV and update JSON
+        df_new = pd.DataFrame([dense_row, sparse_row])
+        df_new.to_csv(csv_path, mode='a', header=False, index=False)
+        
+        # Update JSON incrementally
+        with open(os.path.join(out_dir, "test_sparse_results.json"), "w") as f:
+            json.dump(results, f, indent=2)
+        
+        print(f"  ✓ Saved results for sample {i+1} (CSV + JSON updated)")
+        
+        # Try to compute and print metrics incrementally if possible
+        try:
+            df_current = pd.DataFrame(rows)
+            longbench = create_benchmark_instance("longbench", subsets=["hotpotqa"])
+            metrics_current = longbench.post_run_evaluate(df_current)
+            print(f"  [Current Metrics] Overall score: {metrics_current.get('overall_score', 'N/A')}")
+            if "task_scores" in metrics_current:
+                print(f"  [Current Metrics] Task scores: {metrics_current['task_scores']}")
+            
+            # Save metrics incrementally
+            with open(os.path.join(out_dir, "metrics.json"), "w") as f:
+                json.dump(metrics_current, f, indent=2)
+        except Exception as e:
+            print(f"  ⚠️  Could not compute metrics yet: {e}")
 
-    # Save outputs
-    with open(os.path.join(out_dir, "test_sparse_results.json"), "w") as f:
-        json.dump(results, f, indent=2)
-
+    # Final summary (results already saved incrementally above)
+    print(f"\n{'='*80}")
+    print(f"COMPLETED: Processed {len(rows)//2} samples")
+    print(f"{'='*80}")
+    
     df = pd.DataFrame(rows)
-    df.to_csv(os.path.join(out_dir, "raw_results.csv"), index=False)
+    # CSV already saved incrementally, but ensure final version is correct
+    df.to_csv(csv_path, index=False)
 
-    # Eval
+    # Final evaluation
     try:
         longbench = create_benchmark_instance("longbench", subsets=["hotpotqa"])
         metrics = longbench.post_run_evaluate(df)
         with open(os.path.join(out_dir, "metrics.json"), "w") as f:
             json.dump(metrics, f, indent=2)
-    except Exception:
+        print(f"Final metrics: {metrics}")
+    except Exception as e:
         metrics = None
+        print(f"Failed to compute final metrics: {e}")
 
     # Per-method evaluation and cross-check
     try:
@@ -250,6 +315,33 @@ def run_example(
         summary["metrics"] = metrics
     with open(os.path.join(comp, "comparison_summary.json"), "w") as f:
         json.dump(summary, f, indent=2)
+    
+    # Print final summary to terminal
+    print(f"\n{'='*80}")
+    print(f"FINAL SUMMARY")
+    print(f"{'='*80}")
+    print(f"Dense: {summary['dense']['n']} samples, avg time: {summary['dense']['mean_elapsed_s']:.2f}s")
+    print(f"Sparse: {summary['sparse']['n']} samples, avg time: {summary['sparse']['mean_elapsed_s']:.2f}s")
+    if metrics is not None:
+        print(f"Overall score: {metrics.get('overall_score', 'N/A')}")
+    print(f"Results saved to: {out_dir}")
+    print(f"{'='*80}\n")
+    
+    # Flush micro metrics to ensure all logs are written
+    metric_logger.flush()
+    micro_metrics_file = os.path.join(out_dir, 'micro_metrics.jsonl')
+    if os.path.exists(micro_metrics_file):
+        file_size = os.path.getsize(micro_metrics_file)
+        print(f"[MicroMetrics] ✓ Metrics logged to: {micro_metrics_file} ({file_size} bytes)")
+        # Count lines to show how many metrics were logged
+        try:
+            with open(micro_metrics_file, 'r') as f:
+                line_count = sum(1 for _ in f)
+            print(f"[MicroMetrics] Total metric entries: {line_count}")
+        except Exception:
+            pass
+    else:
+        print(f"[MicroMetrics] ⚠️  Warning: micro_metrics.jsonl not found at {micro_metrics_file}")
 
 
 if __name__ == "__main__":

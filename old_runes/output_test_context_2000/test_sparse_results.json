@@ -1,0 +1,86 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 0.6995482444763184
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 0.19846415519714355
+    },
+    {
+      "response": " Exeter",
+      "elapsed_s": 0.16366028785705566
+    },
+    {
+      "response": " Jupiter",
+      "elapsed_s": 0.15816116333007812
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 0.17075657844543457
+    },
+    {
+      "response": " Parliament",
+      "elapsed_s": 0.15080952644348145
+    },
+    {
+      "response": " Thiruvaduthurai",
+      "elapsed_s": 0.2157437801361084
+    },
+    {
+      "response": " Pueraria",
+      "elapsed_s": 0.18861746788024902
+    },
+    {
+      "response": " 2018",
+      "elapsed_s": 0.17139172554016113
+    },
+    {
+      "response": " Noelle Scaggs",
+      "elapsed_s": 0.32077980041503906
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v.",
+      "elapsed_s": 26.173920154571533
+    },
+    {
+      "response": " Charles L 1.",
+      "elapsed_s": 34.08331370353699
+    },
+    {
+      "response": " Pawlingu",
+      "elapsed_s": 23.25815200805664
+    },
+    {
+      "response": " Jupiter, and State University.",
+      "elapsed_s": 37.04244017601013
+    },
+    {
+      "response": " Neeth 2008",
+      "elapsed_s": 34.45967078208923
+    },
+    {
+      "response": " Parliament, and 1, and ",
+      "elapsed_s": 45.00523662567139
+    },
+    {
+      "response": " Perinthi",
+      "elapsed_s": 25.612269639968872
+    },
+    {
+      "response": " P.",
+      "elapsed_s": 21.772661685943604
+    },
+    {
+      "response": " 2013.",
+      "elapsed_s": 31.074643850326538
+    },
+    {
+      "response": " Noelle",
+      "elapsed_s": 19.82747459411621
+    }
+  ]
+}

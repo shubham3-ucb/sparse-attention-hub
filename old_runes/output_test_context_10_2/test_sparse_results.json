@@ -1,0 +1,30 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 1.1979031562805176
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 1.088012933731079
+    },
+    {
+      "response": " Lowell",
+      "elapsed_s": 1.0293140411376953
+    }
+  ],
+  "sparse": [
+    {
+      "response": " In the first place, the\u00a0.",
+      "elapsed_s": 234.48727250099182
+    },
+    {
+      "response": " Donald Trump's\nThe Real Glory\n",
+      "elapsed_s": 380.4168612957001
+    },
+    {
+      "response": " \n\nThe Associated Press reported that Michigan State",
+      "elapsed_s": 378.48589420318604
+    }
+  ]
+}
