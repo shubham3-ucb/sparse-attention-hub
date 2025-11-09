@@ -213,7 +213,7 @@ Yazoo land scandal
 Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 ","Question: Which case was brought to court first Miller v. California or Gates v. Collier ?
-", Miller v. California,0.7168278694152832,['Miller v. California'],hotpotqa,dense,
+", Miller v. California,0.7625384330749512,['Miller v. California'],hotpotqa,dense,
 "Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 The following are given passages.
@@ -428,4 +428,5 @@ Yazoo land scandal
 Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 ","Question: Which case was brought to court first Miller v. California or Gates v. Collier ?
-"," 16,000 acres",520.6171622276306,['Miller v. California'],hotpotqa,sparse,
+"," Trust. and.
+C.  to",948.4641778469086,['Miller v. California'],hotpotqa,sparse,

@@ -1,11 +1,11 @@
 {
   "dense": {
     "n": 1,
-    "mean_elapsed_s": 0.7168278694152832
+    "mean_elapsed_s": 0.7625384330749512
   },
   "sparse": {
     "n": 1,
-    "mean_elapsed_s": 520.6171622276306
+    "mean_elapsed_s": 948.4641778469086
   },
   "metrics": {
     "task_scores": {
