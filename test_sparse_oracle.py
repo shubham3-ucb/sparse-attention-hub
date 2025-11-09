@@ -10,7 +10,7 @@ import json
 import os
 import sys
 import time
-from typing import Optional
+from typing import List, Optional
 
 import pandas as pd
 import torch
@@ -47,9 +47,15 @@ def run_example(
     
     # Configure MicroMetricLogger to enable attention weight difference logging
     metric_logger = MicroMetricLogger()
+    enabled_metrics: List[str] = ["research_attention_weight_diff"]
+    
+    # Enable mask comparison metric if flag is set
+    if os.environ.get("COMPARE_MASK_ROPED_VS_UNROPED", "0").lower() in ("1", "true", "yes"):
+        enabled_metrics.append("research_mask_roped_vs_unroped")
+    
     metric_logger.configure_logging(
         log_path=out_dir,
-        enabled_metrics=["research_attention_weight_diff"],
+        enabled_metrics=enabled_metrics,
     )
     print(f"[MicroMetrics] Enabled metrics: {metric_logger.get_enabled_metrics()}")
 

@@ -70,7 +70,9 @@ class OracleTopK(TopKMasker):
         scores: torch.Tensor = torch.matmul(queries, keys.transpose(-2, -1))
         if attention_mask is not None:
             scores = scores + attention_mask[:, :, :, : keys.shape[-2]]
-        scores[previous_dense_mask != 0] = MIN_VALUE
+        # Ensure MIN_VALUE matches scores dtype to avoid overflow (e.g., bfloat16)
+        min_value_dtype: torch.Tensor = torch.tensor(MIN_VALUE, dtype=scores.dtype, device=scores.device)
+        scores[previous_dense_mask != 0] = min_value_dtype
         _, top_k_indices = torch.topk(
             scores, k=effective_heavy_size, dim=-1, largest=True
         )
@@ -111,12 +113,16 @@ class OracleTopK(TopKMasker):
         previous_dense_mask = previous_mask.get_dense_mask()
         ngroups = _get_num_key_value_groups(queries, keys)
         keys = repeat_kv(keys, ngroups)
+        # Use queries dtype for MIN_VALUE to match scores dtype (scores come from queries @ keys^T)
+        # This avoids bfloat16 overflow when assigning MIN_VALUE
+        scores_dtype: torch.dtype = queries.dtype
+        min_value: float = torch.finfo(scores_dtype).min
         updated_dense_mask = self.update_core(
             queries,
             keys,
             previous_dense_mask,
             effective_heavy_size,
-            torch.finfo(previous_mask.dtype).min,
+            min_value,
             attention_mask,
         )
 

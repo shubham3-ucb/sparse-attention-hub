@@ -27,6 +27,7 @@ from .rope_utils import (
 MicroMetricLogger.register_metric("research_attention_density", float)
 MicroMetricLogger.register_metric("research_attention_output_error", float)
 MicroMetricLogger.register_metric("research_attention_weight_diff", dict)
+MicroMetricLogger.register_metric("research_mask_roped_vs_unroped", dict)
 
 
 @dataclass
@@ -402,9 +403,10 @@ class ResearchAttention(SparseAttention):
                     #     f"Top-K selection requires unroped Q/K for correct position-agnostic similarity."
                     # )
             
+            ### CHANGE CHANGE CHANGE
             sparse_attention_mask = masker.add_mask(
-                keys=keys_for_mask,  # Use unroped keys for mask computation
-                queries=queries_for_mask,  # Use unroped queries for mask computation
+                keys=keys, #keys_for_mask,  # Use unroped keys for mask computation
+                queries=queries, #queries_for_mask,  # Use unroped queries for mask computation
                 values=values,
                 attention_mask=attention_mask,
                 scaling=scaling,
@@ -413,6 +415,8 @@ class ResearchAttention(SparseAttention):
                 previous_mask=sparse_attention_mask,
                 **kwargs,
             )
+            ### CHANGE CHANGE CHANGE
+            
             if debug:
                 try:
                     dens = sparse_attention_mask.get_density()
@@ -433,6 +437,191 @@ class ResearchAttention(SparseAttention):
                 sparse_attention_mask.get_density(),
                 metadata={"layer_idx": kwargs["layer_idx"]},
             )
+        
+        # Compare mask computed with roped vs unroped Q/K if enabled
+        # Also supports sanity check: compare roped vs roped (should be identical)
+        if MicroMetricLogger().is_metric_enabled("research_mask_roped_vs_unroped"):
+            compare_mask_flag: bool = os.environ.get("COMPARE_MASK_ROPED_VS_UNROPED", "0").lower() in ("1", "true", "yes")
+            
+            # Run comparison if flag is set
+            # Case 1: EXTEND_CONTEXT=1 -> Compare unroped mask (already computed) vs roped mask (baseline)
+            # Case 2: EXTEND_CONTEXT=0 -> Compare roped mask (already computed) vs roped mask (sanity check, should be identical)
+            if compare_mask_flag:
+                layer_idx: int = kwargs["layer_idx"]
+                # Sample only specific layers to reduce overhead
+                sample_layers: List[int] = [15]  # First, middle, and last layers
+                
+                if layer_idx in sample_layers:
+                    # DEBUG: Verify position IDs used for unroping match those used for roping
+                    # This is critical - if position IDs don't match, unroping will be incorrect
+                    position_ids_q_from_kwargs: Optional[torch.Tensor] = kwargs.get("position_ids")
+                    seq_len_keys: int = keys.shape[2]
+                    seq_len_queries: int = queries.shape[2]
+                    
+                    # Expected position IDs for keys (should be [0, 1, 2, ..., seq_len_keys-1] if no reassignment)
+                    # Expected position IDs for queries (from kwargs, or [0, 1, 2, ..., seq_len_queries-1])
+                    expected_pos_ids_k: torch.Tensor = torch.arange(0, seq_len_keys, device=keys.device, dtype=torch.long)
+                    
+                    if position_ids_q_from_kwargs is not None:
+                        expected_pos_ids_q: torch.Tensor = position_ids_q_from_kwargs
+                    else:
+                        expected_pos_ids_q: torch.Tensor = torch.arange(0, seq_len_queries, device=queries.device, dtype=torch.long)
+                    
+                    # If unroped Q/K were used, verify the position IDs that were used for unroping
+                    if extend_context and unroped_used:
+                        # Check if position IDs in sparse_meta_data match what we expect
+                        # (This is where position reassignment might have changed them)
+                        pos_ids_in_meta: Optional[torch.Tensor] = sparse_meta_data.get("position_ids_q") if sparse_meta_data else None
+                        pos_ids_k_in_meta: Optional[torch.Tensor] = sparse_meta_data.get("position_ids_k") if sparse_meta_data else None
+                        
+                        # If position reassignment happened, the actual position IDs might be different
+                        # We need to check what position IDs were actually used for roping the incoming Q/K
+                        # For now, we'll assert that if no reassignment happened, position IDs should match
+                        enable_reassignment: bool = os.environ.get("ENABLE_POSITION_REASSIGNMENT", "0").lower() in ("1", "true", "yes")
+                        
+                        if not enable_reassignment:
+                            # No reassignment - position IDs should match expected
+                            if position_ids_q_from_kwargs is not None:
+                                assert position_ids_q_from_kwargs.shape[1] == seq_len_queries, (
+                                    f"Position IDs shape mismatch: position_ids_q.shape[1]={position_ids_q_from_kwargs.shape[1]}, "
+                                    f"seq_len_queries={seq_len_queries}"
+                                )
+                        
+                        # # DEBUG: Set breakpoint here to inspect position IDs
+                        # import pdb; pdb.set_trace()
+                        
+                        # Log position ID info for debugging
+                        print(f"\n[DEBUG] layer={layer_idx} Position ID Verification:")
+                        print(f"  seq_len_queries={seq_len_queries}, seq_len_keys={seq_len_keys}")
+                        print(f"  position_ids_q_from_kwargs: {position_ids_q_from_kwargs}")
+                        print(f"  expected_pos_ids_q: {expected_pos_ids_q}")
+                        print(f"  expected_pos_ids_k: {expected_pos_ids_k}")
+                        if pos_ids_in_meta is not None:
+                            print(f"  pos_ids_q_in_meta: {pos_ids_in_meta}")
+                        if pos_ids_k_in_meta is not None:
+                            print(f"  pos_ids_k_in_meta: {pos_ids_k_in_meta}")
+                        print(f"  enable_reassignment: {enable_reassignment}")
+                        print(f"  extend_context: {extend_context}, unroped_used: {unroped_used}")
+                    
+                    # Compute baseline mask with roped Q/K
+                    mask_shape: Tuple[int, ...] = (
+                        queries.shape[0],  # batch_size
+                        queries.shape[1],  # num_heads
+                        queries.shape[2],  # seq_len_q
+                        keys.shape[2],     # seq_len_k
+                    )
+                    sparse_attention_mask_roped: Mask = Mask.create_empty_mask(
+                        shape=mask_shape,
+                        dtype=torch.float32,
+                        device=queries.device,
+                    )
+                    
+                    # Apply all maskers with roped Q/K (baseline)
+                    for masker in self.maskers:
+                        sparse_attention_mask_roped = masker.add_mask(
+                            keys=keys,  # Use roped keys
+                            queries=queries,  # Use roped queries
+                            values=values,
+                            attention_mask=attention_mask,
+                            scaling=scaling,
+                            dropout=dropout,
+                            sparse_meta_data=sparse_meta_data,
+                            previous_mask=sparse_attention_mask_roped,
+                            **kwargs,
+                        )
+                    
+                    # Get dense masks for comparison
+                    # Note: mask_computed is the mask already computed (could be unroped or roped depending on EXTEND_CONTEXT)
+                    # mask_roped is always computed with roped Q/K (baseline)
+                    mask_computed: torch.Tensor = sparse_attention_mask.get_dense_mask()  # (batch, num_heads, seq_len_q, seq_len_k)
+                    mask_roped: torch.Tensor = sparse_attention_mask_roped.get_dense_mask()  # (batch, num_heads, seq_len_q, seq_len_k)
+                    
+                    # Determine comparison type for metadata
+                    comparison_type: str = "unroped_vs_roped" if (extend_context and unroped_used) else "roped_vs_roped"
+                    
+                    # Ensure shapes match
+                    if mask_computed.shape == mask_roped.shape:
+                        batch_size: int = mask_computed.shape[0]
+                        num_heads: int = mask_computed.shape[1]
+                        seq_len_q: int = mask_computed.shape[2]
+                        seq_len_k: int = mask_computed.shape[3]
+                        
+                        # Sample only 1 head to reduce memory (head 0)
+                        sample_head_idx: int = 0
+                        
+                        # Extract masks for sampled head
+                        mask_computed_head: torch.Tensor = mask_computed[0, sample_head_idx, :, :]  # (seq_len_q, seq_len_k)
+                        mask_roped_head: torch.Tensor = mask_roped[0, sample_head_idx, :, :]  # (seq_len_q, seq_len_k)
+                        
+                        # Compute comparison metrics
+                        with torch.no_grad():
+                            # Convert to boolean for set operations
+                            mask_computed_bool: torch.Tensor = mask_computed_head > 0
+                            mask_roped_bool: torch.Tensor = mask_roped_head > 0
+                            
+                            # Intersection: keys selected in both
+                            intersection: torch.Tensor = mask_computed_bool & mask_roped_bool
+                            num_intersection: int = intersection.sum().item()
+                            
+                            # Union: keys selected in either
+                            union: torch.Tensor = mask_computed_bool | mask_roped_bool
+                            num_union: int = union.sum().item()
+                            
+                            # Difference: keys selected in one but not the other
+                            only_computed: torch.Tensor = mask_computed_bool & (~mask_roped_bool)
+                            only_roped: torch.Tensor = mask_roped_bool & (~mask_computed_bool)
+                            num_only_computed: int = only_computed.sum().item()
+                            num_only_roped: int = only_roped.sum().item()
+                            
+                            # Jaccard similarity: intersection / union
+                            jaccard: float = (num_intersection / num_union) if num_union > 0 else 0.0
+                            
+                            # Overlap percentage: intersection / (average of both mask sizes)
+                            num_computed: int = mask_computed_bool.sum().item()
+                            num_roped: int = mask_roped_bool.sum().item()
+                            avg_mask_size: float = (num_computed + num_roped) / 2.0
+                            overlap_percentage: float = (num_intersection / avg_mask_size) if avg_mask_size > 0 else 0.0
+                            
+                            # Total difference count
+                            total_diff: int = num_only_computed + num_only_roped
+                            
+                            # Difference percentage
+                            diff_percentage: float = (total_diff / num_union) if num_union > 0 else 0.0
+                        
+                        # Log comprehensive metrics
+                        MicroMetricLogger().log(
+                            "research_mask_roped_vs_unroped",
+                            {
+                                "jaccard_similarity": jaccard,
+                                "overlap_percentage": overlap_percentage,
+                                "num_intersection": num_intersection,
+                                "num_union": num_union,
+                                "num_only_computed": num_only_computed,  # Keys only in computed mask (unroped if EXTEND_CONTEXT=1, roped if EXTEND_CONTEXT=0)
+                                "num_only_roped": num_only_roped,  # Keys only in roped mask
+                                "total_diff": total_diff,
+                                "diff_percentage": diff_percentage,
+                                "num_computed": num_computed,  # Total keys in computed mask
+                                "num_roped": num_roped,  # Total keys in roped mask
+                            },
+                            metadata={
+                                "layer_idx": layer_idx,
+                                "head_idx": sample_head_idx,
+                                "batch_size": batch_size,
+                                "seq_len_q": seq_len_q,
+                                "seq_len_k": seq_len_k,
+                                "queries_shape": list(queries.shape),
+                                "keys_shape": list(keys.shape),
+                                "mask_shape": list(mask_computed.shape),
+                                "comparison_type": comparison_type,  # "unroped_vs_roped" or "roped_vs_roped"
+                                "extend_context": extend_context,
+                                "unroped_used": unroped_used,
+                            },
+                        )
+                    
+                    # Clean up
+                    del sparse_attention_mask_roped, mask_computed, mask_roped
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
             
         # Normal path: use existing get_masked_attention_output
         # Note: Unroped Q/K are used for mask computation above, but normal attention uses roped Q/K
@@ -536,6 +725,10 @@ class ResearchAttention(SparseAttention):
                                 max_diff: float = diff.max().item()
                                 mean_diff: float = diff.mean().item()
                                 l2_diff: float = torch.norm(sparse_weights_head - dense_weights_head).item()
+                                
+                                # Compute relative L2 difference (normalized by dense weights norm)
+                                dense_norm: float = torch.norm(dense_weights_head).item()
+                                l2_diff_relative: float = (l2_diff / dense_norm) if dense_norm > 0 else 0.0
                             
                             # Log per head with comprehensive metrics and shape context
                             MicroMetricLogger().log(
@@ -544,6 +737,7 @@ class ResearchAttention(SparseAttention):
                                     "max_diff": max_diff,
                                     "mean_diff": mean_diff,
                                     "l2_diff": l2_diff,
+                                    "l2_diff_relative": l2_diff_relative,
                                 },
                                 metadata={
                                     "layer_idx": layer_idx,

@@ -1,0 +1,38 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 1.1892526149749756
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 1.0779156684875488
+    },
+    {
+      "response": " Lowell",
+      "elapsed_s": 1.0201928615570068
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 1.0345470905303955
+    }
+  ],
+  "sparse": [
+    {
+      "response": " 1st\n\nGates v.",
+      "elapsed_s": 28.699641466140747
+    },
+    {
+      "response": " 1983",
+      "elapsed_s": 41.40307307243347
+    },
+    {
+      "response": " \nThe answer is: \nJohn Mack",
+      "elapsed_s": 47.570393562316895
+    },
+    {
+      "response": " The answer is the Mars mission, the",
+      "elapsed_s": 48.44869899749756
+    }
+  ]
+}

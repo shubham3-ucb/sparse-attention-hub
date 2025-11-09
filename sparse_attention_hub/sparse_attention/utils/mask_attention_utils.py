@@ -494,7 +494,12 @@ def get_masked_attention_output(
     
     unroped_queries = queries
     unroped_keys = keys
-    if (sparse_attention_mask.get_density() < 1.0) and (rotary_emb is not None and position_ids_q is not None):
+    # Check if position reassignment is enabled (default: False)
+    # When disabled, unroping for mask computation can still happen via EXTEND_CONTEXT in base.py
+    # but repositioning/re-roping is skipped here
+    enable_position_reassignment: bool = os.environ.get("ENABLE_POSITION_REASSIGNMENT", "0").lower() in ("1", "true", "yes")
+    
+    if (sparse_attention_mask.get_density() < 1.0) and (rotary_emb is not None and position_ids_q is not None) and enable_position_reassignment:
         # import pdb; pdb.set_trace()
         try:
             # Compute cos/sin for queries
@@ -826,10 +831,12 @@ def get_masked_attention_output(
                 else:
                     all_current_chunk_key_indices_sorted: List[int] = []
                 
+                ### CHANGE CHANGE CHANGE
                 # Start current chunk at max_prefix + 1 (or 0 if no prefix)
-                # current_chunk_start: int = max_prefix_position + 1 if max_prefix_position >= 0 else 0
-                current_chunk_start = num_prefix_keys
+                current_chunk_start: int = max_prefix_position + 1 if max_prefix_position >= 0 else 0
+                # current_chunk_start = num_prefix_keys
                 # num_prefix_keys
+                ### CHANGE CHANGE CHANGE
                 
                 # Assign contiguous IDs to all current chunk keys starting from current_chunk_start (vectorized)
                 if len(all_current_chunk_key_indices_sorted) > 0:

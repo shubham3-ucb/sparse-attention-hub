@@ -1,0 +1,38 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 1.2292094230651855
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 1.0806031227111816
+    },
+    {
+      "response": " Lowell",
+      "elapsed_s": 1.0211036205291748
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 1.0342192649841309
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 5.097872018814087
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 19.01548147201538
+    },
+    {
+      "response": " Howell",
+      "elapsed_s": 14.936856985092163
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 16.280970096588135
+    }
+  ]
+}

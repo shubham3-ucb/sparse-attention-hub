@@ -1,0 +1,38 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 1.199946403503418
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 1.0732064247131348
+    },
+    {
+      "response": " Lowell",
+      "elapsed_s": 1.026693344116211
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 1.02945876121521
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v.",
+      "elapsed_s": 22.26612424850464
+    },
+    {
+      "response": " Charles Lytart.",
+      "elapsed_s": 45.13865876197815
+    },
+    {
+      "response": " Flint, and 2006.",
+      "elapsed_s": 51.464911699295044
+    },
+    {
+      "response": " Jupiter orbiting) 1\n \n",
+      "elapsed_s": 45.75480532646179
+    }
+  ]
+}

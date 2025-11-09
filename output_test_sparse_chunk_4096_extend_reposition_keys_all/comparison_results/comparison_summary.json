@@ -1,23 +1,23 @@
 {
   "dense": {
-    "n": 10,
-    "mean_elapsed_s": 0.8695765733718872
+    "n": 4,
+    "mean_elapsed_s": 1.0839369893074036
   },
   "sparse": {
-    "n": 10,
-    "mean_elapsed_s": 289.6293174505234
+    "n": 4,
+    "mean_elapsed_s": 48.698831617832184
   },
   "metrics": {
     "task_scores": {
-      "hotpotqa": 17.5
+      "hotpotqa": 25.0
     },
-    "standard_overall_score": 17.5,
-    "overall_score": 17.5,
+    "standard_overall_score": 25.0,
+    "overall_score": 25.0,
     "summary": {
       "total_tasks": 1,
       "standard_tasks": 1,
       "extended_tasks": 0,
-      "total_samples": 20
+      "total_samples": 8
     }
   }
 }
