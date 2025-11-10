@@ -1,0 +1,14 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 1.2016456127166748
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v.",
+      "elapsed_s": 160.83651399612427
+    }
+  ]
+}

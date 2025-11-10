@@ -9,6 +9,53 @@ from torch import nn
 from .kv_utils import _get_num_key_value_groups, repeat_kv
 from .mask import Mask
 
+# Default behavior: enable proportional prefix scaling unless explicitly disabled via kwargs
+DEFAULT_USE_PROPORTIONAL_PREFIX_SCALING: bool = True
+# Ratio cap for prefix scaling (0 < alpha <= 1). Example: 0.75 compresses prefix
+# to 75% of the available pre-chunk span. You can override via kwargs
+# 'prefix_scale_alpha' if needed.
+DEFAULT_PREFIX_SCALE_ALPHA: float = 0.1
+# Default behavior: enable two-band prefix scaling (sinks+tail frozen, middle compressed)
+DEFAULT_USE_TWO_BAND_PREFIX_SCALING: bool = True
+
+
+def _scale_prefix_positions(
+    prefix_positions: torch.Tensor,
+    target_max_exclusive: int,
+    epsilon: int = 1,
+) -> torch.Tensor:
+    """Affine-rescale prefix positions into [0, target_max_exclusive - 1 - epsilon].
+
+    Args:
+        prefix_positions: 1D tensor (long) of original prefix positions (on any device).
+        target_max_exclusive: Upper bound (exclusive) for the target range; typically the
+            first position of the current chunk, e.g., min_query_position.
+        epsilon: Gap to keep before the chunk start to ensure clean separation.
+
+    Returns:
+        Tensor of same shape and device as ``prefix_positions`` with dtype long, scaled
+        and clamped to the target range.
+    """
+    if prefix_positions.numel() == 0:
+        return prefix_positions.clone()
+
+    # Compute source range
+    min_p: int = int(prefix_positions.min().item())
+    max_p: int = int(prefix_positions.max().item())
+    denom: int = max(1, max_p - min_p)
+
+    # Compute target range [0, target_max_inclusive]
+    target_max_inclusive: int = max(0, target_max_exclusive - 1 - max(0, epsilon))
+
+    # Scale; clamp to avoid expansion (compress-only)
+    s_raw: float = float(target_max_inclusive) / float(denom)
+    s: float = min(1.0, s_raw)
+
+    # Apply scaling on the same device; cast to float for arithmetic then back to long
+    scaled: torch.Tensor = (prefix_positions.to(torch.float32) - float(min_p)) * s
+    scaled = torch.round(scaled).to(dtype=torch.long, device=prefix_positions.device)
+    return torch.clamp(scaled, min=0, max=target_max_inclusive)
+
 
 def get_true_attention_output(
     module: nn.Module,
@@ -752,6 +799,30 @@ def get_masked_attention_output(
                 batch_size, num_heads, seq_len_k, device=keys.device, dtype=torch.long
             )
             
+            # Toggle for proportional prefix scaling (clean minimal change)
+            use_proportional_prefix_scaling: bool = bool(
+                kwargs.get("use_proportional_prefix_scaling", DEFAULT_USE_PROPORTIONAL_PREFIX_SCALING)
+            )
+            # Choose epsilon adaptively: when there is no space, drop the gap
+            adaptive_epsilon: int = 1 if min_query_position > 1 else 0
+            # Ratio cap alpha for prefix scaling
+            prefix_scale_alpha: float = float(
+                kwargs.get("prefix_scale_alpha", DEFAULT_PREFIX_SCALE_ALPHA)
+            )
+            # Clamp alpha into sensible range
+            if prefix_scale_alpha <= 0.0:
+                prefix_scale_alpha = 0.0
+            if prefix_scale_alpha > 1.0:
+                prefix_scale_alpha = 1.0
+            # Two-band scaling controls
+            use_two_band_prefix_scaling: bool = bool(
+                kwargs.get("use_two_band_prefix_scaling", DEFAULT_USE_TWO_BAND_PREFIX_SCALING)
+            )
+            # Defaults for anchors during two-band scaling
+            num_sink_tokens: int = int(kwargs.get("num_sink_tokens", 128))
+            prefix_freeze_tail_k: int = int(kwargs.get("prefix_freeze_tail_k", 0))
+            enforce_monotone_prefix: bool = bool(kwargs.get("monotone_prefix", True))
+            
             # import pdb; pdb.set_trace()
             print(f"debug: {debug}")
             if debug:
@@ -809,11 +880,152 @@ def get_masked_attention_output(
                 # Reassign prefix keys to contiguous positions [0, 1, 2, ...]
                 num_prefix_keys: int = len(prefix_key_indices_sorted)
                 if num_prefix_keys > 0:
-                    # Vectorized assignment: create tensor of new positions and assign all at once
-                    new_prefix_positions: torch.Tensor = torch.arange(
-                        num_prefix_keys, device=position_ids_k_per_head.device, dtype=torch.long
-                    )
-                    position_ids_k_per_head[0, head_idx, prefix_key_indices_sorted] = new_prefix_positions
+                    if use_two_band_prefix_scaling:
+                        # ============================
+                        # Two-band prefix scaling:
+                        # - Freeze first S sinks (by order in prefix)
+                        # - Freeze last K prefix tokens near the chunk
+                        # - Compress only the middle band proportionally
+                        # ============================
+                        S: int = max(0, min(num_sink_tokens, num_prefix_keys))
+                        # Compute boundary and T_pref once per head (depends on moving query position)
+                        boundary_inclusive: int = max(0, min_query_position - 1)
+                        T_pref_inclusive: int = int(prefix_scale_alpha * float(boundary_inclusive))
+                        # Determine requested K and cap it so that target_high_inclusive >= target_low
+                        K_requested: int = max(0, min(prefix_freeze_tail_k, max(0, num_prefix_keys - S)))
+                        K_cap_by_target: int = max(0, T_pref_inclusive - S)
+                        K: int = max(0, min(K_requested, K_cap_by_target))
+                        start_mid: int = S
+                        end_mid_exclusive: int = max(S, num_prefix_keys - K)
+                        # Prepare original positions for the whole selected prefix (sorted)
+                        prefix_positions_tensor_full: torch.Tensor = position_ids_k_actual[0, prefix_key_indices_sorted]
+                        if debug:
+                            print(
+                                f"    [TwoBand Scaling] S={S}, K={K} (req={K_requested}, cap_by_target={K_cap_by_target}), "
+                                f"alpha={prefix_scale_alpha:.3f}, boundary={boundary_inclusive}, T_pref={T_pref_inclusive}"
+                            )
+                        # Freeze sinks: first S elements
+                        if S > 0:
+                            sink_indices: List[int] = prefix_key_indices_sorted[:S]
+                            sink_positions: torch.Tensor = position_ids_k_actual[0, sink_indices]
+                            position_ids_k_per_head[0, head_idx, sink_indices] = sink_positions
+                        # Freeze tail: last K elements
+                        if K > 0:
+                            tail_indices: List[int] = prefix_key_indices_sorted[-K:]
+                            tail_positions: torch.Tensor = position_ids_k_actual[0, tail_indices]
+                            position_ids_k_per_head[0, head_idx, tail_indices] = tail_positions
+                        # Middle band scaling
+                        if end_mid_exclusive > start_mid:
+                            middle_indices_sorted: List[int] = prefix_key_indices_sorted[start_mid:end_mid_exclusive]
+                            middle_orig_positions: torch.Tensor = position_ids_k_actual[0, middle_indices_sorted]
+                            min_mid: int = int(middle_orig_positions.min().item())
+                            max_mid: int = int(middle_orig_positions.max().item())
+                            # boundary_inclusive and T_pref_inclusive already computed above
+                            # Target band for middle: [S .. T_pref_inclusive - K]
+                            target_low: int = S
+                            target_high_inclusive: int = T_pref_inclusive - K
+                            if target_high_inclusive >= target_low and max_mid >= min_mid:
+                                target_span: int = target_high_inclusive - target_low
+                                denom_mid: int = max(1, max_mid - min_mid)
+                                s_raw_mid: float = float(target_span) / float(denom_mid)
+                                s_mid: float = min(1.0, s_raw_mid)
+                                # Scale with floor and clamp
+                                middle_scaled: torch.Tensor = (
+                                    (middle_orig_positions.to(torch.float32) - float(min_mid)) * s_mid
+                                )
+                                middle_scaled = torch.floor(middle_scaled).to(dtype=torch.long, device=middle_orig_positions.device)
+                                middle_new_positions: torch.Tensor = torch.clamp(
+                                    target_low + middle_scaled, min=target_low, max=target_high_inclusive
+                                )
+                                if enforce_monotone_prefix and middle_new_positions.numel() > 0:
+                                    # Ensure non-decreasing sequence to avoid duplicates regression
+                                    # (keep within [target_low, target_high_inclusive])
+                                    running_max: int = int(middle_new_positions[0].item())
+                                    middle_new_positions_list: List[int] = middle_new_positions.cpu().tolist()
+                                    for idx in range(1, len(middle_new_positions_list)):
+                                        if middle_new_positions_list[idx] < running_max:
+                                            middle_new_positions_list[idx] = running_max
+                                        running_max = min(
+                                            target_high_inclusive,
+                                            max(running_max, middle_new_positions_list[idx]),
+                                        )
+                                    middle_new_positions = torch.tensor(
+                                        middle_new_positions_list, device=middle_new_positions.device, dtype=torch.long
+                                    )
+                                # Assign middle band
+                                position_ids_k_per_head[0, head_idx, middle_indices_sorted] = middle_new_positions
+                                if debug:
+                                    print(
+                                        f"    [TwoBand Scaling] S={S}, K={K}, alpha={prefix_scale_alpha:.3f}, "
+                                        f"boundary={boundary_inclusive}, T_pref={T_pref_inclusive}, "
+                                        f"middle_in=[{min_mid},{max_mid}], target=[{target_low},{target_high_inclusive}], "
+                                        f"s_mid={s_mid:.6f}, n_middle={len(middle_indices_sorted)}"
+                                    )
+                                    # Show a small sample of middle remap to make the effect explicit
+                                    sample_sz: int = min(3, len(middle_indices_sorted))
+                                    if sample_sz > 0:
+                                        # Head (start) sample
+                                        sample_idxs_head: List[int] = middle_indices_sorted[:sample_sz]
+                                        sample_orig_head: torch.Tensor = position_ids_k_actual[0, sample_idxs_head]
+                                        sample_new_head: torch.Tensor = position_ids_k_per_head[0, head_idx, sample_idxs_head]
+                                        print(f"      Middle sample head orig={sample_orig_head.tolist()} -> new={sample_new_head.tolist()}")
+                                        # Tail (end) sample
+                                        sample_idxs_tail: List[int] = middle_indices_sorted[-sample_sz:]
+                                        sample_orig_tail: torch.Tensor = position_ids_k_actual[0, sample_idxs_tail]
+                                        sample_new_tail: torch.Tensor = position_ids_k_per_head[0, head_idx, sample_idxs_tail]
+                                        print(f"      Middle sample tail orig={sample_orig_tail.tolist()} -> new={sample_new_tail.tolist()}")
+                            else:
+                                # Fallback: keep middle band original positions to avoid zeros
+                                position_ids_k_per_head[0, head_idx, middle_indices_sorted] = middle_orig_positions
+                                if debug:
+                                    assert False, "Skipped middle scaling due to insufficient target range"
+                                    print(
+                                        f"    [TwoBand Scaling] Skipped middle scaling due to insufficient target range: "
+                                        f"target_low={target_low}, target_high_inclusive={target_high_inclusive}, "
+                                        f"S={S}, K={K}, T_pref={T_pref_inclusive}"
+                                    )
+                        else:
+                            if debug:
+                                print(
+                                    f"    [TwoBand Scaling] No middle band to scale (S={S}, K={K}, num_prefix={num_prefix_keys})"
+                                )
+                    elif use_proportional_prefix_scaling:
+                        # Scale prefix into [0, target_prefix_max_inclusive] using ratio cap alpha.
+                        # Base boundary is pre-chunk span: [0 .. min_query_position-1]
+                        boundary_inclusive: int = max(0, min_query_position - 1)
+                        # Ratio-capped target inclusive bound; use epsilon=0 here to avoid a
+                        # gratuitous -1 shift when the prefix already fits
+                        target_prefix_max_inclusive: int = int(prefix_scale_alpha * float(boundary_inclusive))
+                        # Ensure non-negative
+                        target_prefix_max_inclusive = max(0, target_prefix_max_inclusive)
+                        # Convert to exclusive bound for helper
+                        target_prefix_max_exclusive: int = target_prefix_max_inclusive + 1
+                        prefix_positions_tensor: torch.Tensor = position_ids_k_actual[0, prefix_key_indices_sorted]
+                        new_prefix_positions: torch.Tensor = _scale_prefix_positions(
+                            prefix_positions=prefix_positions_tensor,
+                            target_max_exclusive=target_prefix_max_exclusive,
+                            epsilon=0,
+                        )
+                        if debug:
+                            # Print concise scaling diagnostics
+                            min_p = int(prefix_positions_tensor.min().item())
+                            max_p = int(prefix_positions_tensor.max().item())
+                            denom = max(1, max_p - min_p)
+                            s_raw = float(target_prefix_max_inclusive) / float(denom)
+                            print(
+                                f"    [Prefix Scaling] alpha={prefix_scale_alpha:.3f}, "
+                                f"boundary_inclusive={boundary_inclusive}, "
+                                f"target_prefix_max_inclusive={target_prefix_max_inclusive}, "
+                                f"min_prefix={min_p}, max_prefix={max_p}, denom={denom}, s_raw={s_raw:.6f}"
+                            )
+                    else:
+                        # Vectorized assignment: create tensor of new positions and assign all at once
+                        new_prefix_positions: torch.Tensor = torch.arange(
+                            num_prefix_keys, device=position_ids_k_per_head.device, dtype=torch.long
+                        )
+                    # Only assign bulk new_prefix_positions for non two-band modes
+                    if not use_two_band_prefix_scaling:
+                        position_ids_k_per_head[0, head_idx, prefix_key_indices_sorted] = new_prefix_positions
 
                 # Get all current chunk keys (not just selected ones) - vectorized
                 all_current_chunk_mask: torch.Tensor = position_ids_k_actual[0] >= min_query_position  # (seq_len_k,)
@@ -840,12 +1052,17 @@ def get_masked_attention_output(
                 
                 # Assign contiguous IDs to all current chunk keys starting from current_chunk_start (vectorized)
                 if len(all_current_chunk_key_indices_sorted) > 0:
-                    num_current_chunk_keys: int = len(all_current_chunk_key_indices_sorted)
-                    new_current_chunk_positions: torch.Tensor = torch.arange(
-                        current_chunk_start, current_chunk_start + num_current_chunk_keys,
-                        device=position_ids_k_per_head.device, dtype=torch.long
-                    )
-                    position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted] = new_current_chunk_positions
+                    if use_proportional_prefix_scaling:
+                        # Keep current chunk positions UNCHANGED (copy original positions)
+                        original_current_chunk_positions: torch.Tensor = position_ids_k_actual[0, all_current_chunk_key_indices_sorted]
+                        position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted] = original_current_chunk_positions
+                    else:
+                        num_current_chunk_keys: int = len(all_current_chunk_key_indices_sorted)
+                        new_current_chunk_positions: torch.Tensor = torch.arange(
+                            current_chunk_start, current_chunk_start + num_current_chunk_keys,
+                            device=position_ids_k_per_head.device, dtype=torch.long
+                        )
+                        position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted] = new_current_chunk_positions
                 # Diagnostic prints (only if SPARSE_DEBUG enabled)
                 # Commented out verbose per-head details - uncomment if needed for debugging
                 # if debug:

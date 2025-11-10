@@ -1,0 +1,22 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 1.208984613418579
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 1.0908737182617188
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v.",
+      "elapsed_s": 158.38323330879211
+    },
+    {
+      "response": " Charles Lytoldenjoy, and",
+      "elapsed_s": 407.4138412475586
+    }
+  ]
+}
