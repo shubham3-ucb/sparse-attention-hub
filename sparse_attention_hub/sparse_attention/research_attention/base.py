@@ -35,6 +35,8 @@ class ResearchAttentionConfig(SparseAttentionConfig):
     """Configuration class for research attention mechanisms."""
 
     masker_configs: List[MaskerConfig]
+    # Optional: translate-pack K+Chunk (keep slope 1 for K+Chunk; only translate)
+    pack_k_chunk_translation: bool = False
 
 
 class ResearchAttention(SparseAttention):
@@ -405,8 +407,10 @@ class ResearchAttention(SparseAttention):
             
             ### CHANGE CHANGE CHANGE
             sparse_attention_mask = masker.add_mask(
-                keys=keys, #keys_for_mask,  # Use unroped keys for mask computation
-                queries=queries, #queries_for_mask,  # Use unroped queries for mask computation
+                # keys=keys, #keys_for_mask,  # Use unroped keys for mask computation
+                # queries=queries, #queries_for_mask,  # Use unroped queries for mask computation
+                keys=keys_for_mask,  # Use unroped keys for mask computation
+                queries=queries_for_mask,  # Use unroped queries for mask computation
                 values=values,
                 attention_mask=attention_mask,
                 scaling=scaling,
@@ -634,6 +638,8 @@ class ResearchAttention(SparseAttention):
                     fh.write(final_line + "\n")
             except Exception:
                 pass
+        # Thread config toggles into kwargs (no env flags)
+        kwargs.setdefault("pack_k_chunk_translation", getattr(self.sparse_attention_config, "pack_k_chunk_translation", False))
         attention_output, attention_weights = get_masked_attention_output(
             module=module,
             queries=queries,
@@ -757,12 +763,15 @@ class ResearchAttention(SparseAttention):
                         torch.cuda.empty_cache()
                         
                 except RuntimeError as e:
-                    if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
-                        # Silently skip if OOM - don't crash the run
-                        pass
-                    else:
-                        # Re-raise if it's a different error
-                        raise
+                    msg_lower = str(e).lower()
+                    if "out of memory" in msg_lower or "cuda" in msg_lower:
+                        raise RuntimeError(
+                            f"[FATAL] research_attention_weight_diff dense comparison failed at layer {layer_idx} due to OOM/CUDA error. "
+                            f"This run requires dense-vs-sparse metrics; refusing to continue silently. "
+                            f"Action: reduce PREFILL_CHUNK_SIZE, NUM_SAMPLES, or effective sequence length (e.g., set MAX_CONTEXT_LENGTH) and re-run."
+                        ) from e
+                    # Re-raise non-OOM errors
+                    raise
 
         return attention_output, attention_weights
 

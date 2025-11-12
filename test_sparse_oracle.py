@@ -2,6 +2,25 @@
 """Minimal benchmark runner: runs N HotpotQA samples (dense vs sparse) and
 writes results under ``output_test_sparse/``. Designed to be small and
 reproducible for local experiments.
+
+ENV FLAGS CHEAT-SHEET (two-band remapping visibility)
+-----------------------------------------------------
+- Required to see two-band scaling logs in the sparse path:
+  - SPARSE_DEBUG=1
+  - ENABLE_POSITION_REASSIGNMENT=1
+  - Ensure the mask is actually sparse (density < 1.0); otherwise the
+    remapping branch is skipped by design. If your current maskers yield
+    dense masks, reduce the oracle budget, e.g. ORACLE_TOPK_HEAVY_SIZE=0.05.
+
+- Optional diagnostics:
+  - EXTEND_CONTEXT=1               # compute unroped mask for analysis logs
+  - COMPARE_MASK_ROPED_VS_UNROPED=1  # log mask similarity micrometrics
+  - PREFILL_CHUNK_SIZE=4096        # chunked prefill to mirror prior runs
+
+- Pack K+Chunk (translate-only, slope=1) toggle:
+  - Controlled via code config (ResearchAttentionConfig.pack_k_chunk_translation=True),
+    not an env var. When enabled, logs print one line:
+      [Pack K+Chunk] M_end=..., Δ=..., K=[..], Chunk=[..]
 """
 
 from __future__ import annotations
@@ -83,7 +102,9 @@ def run_example(
             SinkMaskerConfig(sink_size=128),
             LocalMaskerConfig(window_size=128),
             OracleTopKConfig(heavy_size=heavy_size),
-        ]
+        ],
+        # Ensure translate-pack K+Chunk (slope 1, pure translation)
+        pack_k_chunk_translation=True,
     )
     print(f"[DEBUG] OracleTopK heavy_size={heavy_size} (set ORACLE_TOPK_HEAVY_SIZE env var to override)")
     adapter_sparse = ModelAdapterHF(model_name, sparse_cfg, model_kwargs=model_kwargs, tokenizer_kwargs=tokenizer_kwargs, device=device)
@@ -358,12 +379,18 @@ if __name__ == "__main__":
     except Exception:
         num_samples = 10
 
+    # Allow overriding model checkpoint via env var
+    # Accept either MODEL_NAME or MODEL_ID (MODEL_NAME takes precedence)
+    model_env: Optional[str] = os.environ.get("MODEL_NAME") or os.environ.get("MODEL_ID")
+    if model_env is None or len(model_env.strip()) == 0:
+        model_env = "meta-llama/Llama-3.2-1B-Instruct"
+
     # Ensure OUTPUT_DIR exists and set SPARSE_LOG_PATH to a file inside it (always)
     out_dir = os.environ.get("OUTPUT_DIR", os.path.join(os.getcwd(), "output_test_sparse"))
     os.makedirs(out_dir, exist_ok=True)
     os.environ["SPARSE_LOG_PATH"] = os.environ.get("SPARSE_LOG_PATH", os.path.join(out_dir, "hf_prefill.log"))
 
-    print(f"Running test_sparse_oracle with NUM_SAMPLES={num_samples}, OUTPUT_DIR={out_dir}, PREFILL_CHUNK_SIZE={os.environ.get('PREFILL_CHUNK_SIZE')}, SPARSE_LOG_PATH={os.environ.get('SPARSE_LOG_PATH')}")
-    run_example(num_samples=num_samples)
+    print(f"Running test_sparse_oracle with NUM_SAMPLES={num_samples}, OUTPUT_DIR={out_dir}, PREFILL_CHUNK_SIZE={os.environ.get('PREFILL_CHUNK_SIZE')}, SPARSE_LOG_PATH={os.environ.get('SPARSE_LOG_PATH')}, MODEL_NAME={model_env}")
+    run_example(model_name=model_env, num_samples=num_samples)
 
 

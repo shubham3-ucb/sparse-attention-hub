@@ -1,0 +1,86 @@
+{
+  "dense": [
+    {
+      "response": " The\n Prison\n The\n Prison\n",
+      "elapsed_s": 3.056175947189331
+    },
+    {
+      "response": " \nT his \nT his \nT",
+      "elapsed_s": 4.086652994155884
+    },
+    {
+      "response": " \nM coach the 1 the ",
+      "elapsed_s": 4.09145188331604
+    },
+    {
+      "response": " \nthe \nthe \nthe \nthe",
+      "elapsed_s": 4.111652135848999
+    },
+    {
+      "response": " True [the \nthe \nthe \n",
+      "elapsed_s": 3.5518369674682617
+    },
+    {
+      "response": " the  the 2010 and the",
+      "elapsed_s": 3.543426275253296
+    },
+    {
+      "response": " the \nD D.D D\n D",
+      "elapsed_s": 3.9552340507507324
+    },
+    {
+      "response": " Pleiospilos",
+      "elapsed_s": 0.555964469909668
+    },
+    {
+      "response": " The\n the campus the\n The campus",
+      "elapsed_s": 2.8553309440612793
+    },
+    {
+      "response": " Fitz and the Tantrums.",
+      "elapsed_s": 2.573610544204712
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Gates v. Collier",
+      "elapsed_s": 419.13437581062317
+    },
+    {
+      "response": " Charles L.",
+      "elapsed_s": 562.6945583820343
+    },
+    {
+      "response": " East Lansing",
+      "elapsed_s": 499.016921043396
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 435.9308326244354
+    },
+    {
+      "response": " On film.",
+      "elapsed_s": 507.69786071777344
+    },
+    {
+      "response": " Parliament",
+      "elapsed_s": 393.2517960071564
+    },
+    {
+      "response": " Kumbakonam",
+      "elapsed_s": 658.2215087413788
+    },
+    {
+      "response": " Both.",
+      "elapsed_s": 37.125056743621826
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 352.46985268592834
+    },
+    {
+      "response": " The Rebirth",
+      "elapsed_s": 254.74099898338318
+    }
+  ]
+}

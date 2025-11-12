@@ -1,0 +1,70 @@
+{
+  "dense": [
+    {
+      "response": " The\n Prison\n The\n Prison\n",
+      "elapsed_s": 3.0838165283203125
+    },
+    {
+      "response": " \nT his \nT his \nT",
+      "elapsed_s": 4.772842168807983
+    },
+    {
+      "response": " \nM coach the 1 the ",
+      "elapsed_s": 4.625651597976685
+    },
+    {
+      "response": " \nthe \nthe \nthe \nthe",
+      "elapsed_s": 4.123155355453491
+    },
+    {
+      "response": " True [the \nthe \nthe \n",
+      "elapsed_s": 4.252590894699097
+    },
+    {
+      "response": " the  the 2010 and the",
+      "elapsed_s": 3.5840952396392822
+    },
+    {
+      "response": " the \nD D.D D\n D",
+      "elapsed_s": 3.986321210861206
+    },
+    {
+      "response": " Pleiospilos",
+      "elapsed_s": 0.544724702835083
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 499.95454359054565
+    },
+    {
+      "response": " Charles L.",
+      "elapsed_s": 730.7269167900085
+    },
+    {
+      "response": " Lowell",
+      "elapsed_s": 518.8995838165283
+    },
+    {
+      "response": " Mars",
+      "elapsed_s": 519.353369474411
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 467.02288603782654
+    },
+    {
+      "response": " Politician",
+      "elapsed_s": 549.9993176460266
+    },
+    {
+      "response": " Kumbakonam",
+      "elapsed_s": 918.548994064331
+    },
+    {
+      "response": " Pleiospilos",
+      "elapsed_s": 75.82941246032715
+    }
+  ]
+}

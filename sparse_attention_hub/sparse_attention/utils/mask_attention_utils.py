@@ -14,9 +14,12 @@ DEFAULT_USE_PROPORTIONAL_PREFIX_SCALING: bool = True
 # Ratio cap for prefix scaling (0 < alpha <= 1). Example: 0.75 compresses prefix
 # to 75% of the available pre-chunk span. You can override via kwargs
 # 'prefix_scale_alpha' if needed.
-DEFAULT_PREFIX_SCALE_ALPHA: float = 0.1
+DEFAULT_PREFIX_SCALE_ALPHA: float = 1.0
 # Default behavior: enable two-band prefix scaling (sinks+tail frozen, middle compressed)
 DEFAULT_USE_TWO_BAND_PREFIX_SCALING: bool = True
+DEFAULT_PACK_K_CHUNK_TRANSLATION: bool = True
+# Hard cap for position IDs (inclusive). Enforce ALWAYS; fatal on violation.
+DEFAULT_MAX_POSITION_ID: int = 8192
 
 
 def _scale_prefix_positions(
@@ -545,6 +548,7 @@ def get_masked_attention_output(
     # When disabled, unroping for mask computation can still happen via EXTEND_CONTEXT in base.py
     # but repositioning/re-roping is skipped here
     enable_position_reassignment: bool = os.environ.get("ENABLE_POSITION_REASSIGNMENT", "0").lower() in ("1", "true", "yes")
+    # if (rotary_emb is not None and position_ids_q is not None) and enable_position_reassignment:
     
     if (sparse_attention_mask.get_density() < 1.0) and (rotary_emb is not None and position_ids_q is not None) and enable_position_reassignment:
         # import pdb; pdb.set_trace()
@@ -814,18 +818,30 @@ def get_masked_attention_output(
                 prefix_scale_alpha = 0.0
             if prefix_scale_alpha > 1.0:
                 prefix_scale_alpha = 1.0
+            # Hard cap: max allowed position id (inclusive)
+            max_position_id_allowed: int = int(kwargs.get("max_position_id", DEFAULT_MAX_POSITION_ID))
+            assert max_position_id_allowed >= 0, "[FATAL] max_position_id must be non-negative"
             # Two-band scaling controls
             use_two_band_prefix_scaling: bool = bool(
                 kwargs.get("use_two_band_prefix_scaling", DEFAULT_USE_TWO_BAND_PREFIX_SCALING)
             )
-            # Defaults for anchors during two-band scaling
-            num_sink_tokens: int = int(kwargs.get("num_sink_tokens", 128))
+            # Optional pack: translate K+Chunk down as a block (slope 1)
+            pack_k_chunk_translation: bool = bool(
+                kwargs.get("pack_k_chunk_translation", DEFAULT_PACK_K_CHUNK_TRANSLATION)
+            )
+            # Defaults for anchors during two-band scaling (stress: no anchors)
+            num_sink_tokens: int = int(kwargs.get("num_sink_tokens", 0))
             prefix_freeze_tail_k: int = int(kwargs.get("prefix_freeze_tail_k", 0))
             enforce_monotone_prefix: bool = bool(kwargs.get("monotone_prefix", True))
             
             # import pdb; pdb.set_trace()
-            print(f"debug: {debug}")
             if debug:
+                # One-shot mode summary per layer
+                print(
+                    f"[Mode] two_band={use_two_band_prefix_scaling}, proportional={use_proportional_prefix_scaling}, "
+                    f"pack={pack_k_chunk_translation}, alpha={prefix_scale_alpha:.3f}, "
+                    f"S_default={num_sink_tokens}, K_default={prefix_freeze_tail_k}"
+                )
                 max_q_pos = position_ids_q[0, -1].item()
                 min_k_pos = position_ids_k_actual[0, 0].item()
                 max_k_pos = position_ids_k_actual[0, -1].item()
@@ -836,6 +852,9 @@ def get_masked_attention_output(
 
             # Process each head independently
             for head_idx in range(num_heads):
+                # Per-head translation state for optional packing
+                pack_delta: Optional[int] = None
+                m_end_for_pack: Optional[int] = None
                 # Get union of selected key indices for this head (vectorized)
                 # Shape: dense_mask[0, head_idx, :, :] is (seq_len_q, seq_len_k)
                 # Use torch.any(dim=0) to get keys attended by ANY query: (seq_len_k,)
@@ -890,7 +909,29 @@ def get_masked_attention_output(
                         S: int = max(0, min(num_sink_tokens, num_prefix_keys))
                         # Compute boundary and T_pref once per head (depends on moving query position)
                         boundary_inclusive: int = max(0, min_query_position - 1)
-                        T_pref_inclusive: int = int(prefix_scale_alpha * float(boundary_inclusive))
+                        # Enforce hard cap via alpha_eff so that max_new = T_pref + L_q <= B_max
+                        # If boundary=0, alpha_eff=0; also ensure L_q <= B_max
+                        assert seq_len_q <= (max_position_id_allowed + 1), (
+                            f"[FATAL] Chunk length L_q={seq_len_q} exceeds allowed window {max_position_id_allowed+1}"
+                        )
+                        if boundary_inclusive > 0:
+                            cap_ratio: float = float(max(0, max_position_id_allowed - seq_len_q)) / float(boundary_inclusive)
+                            alpha_eff: float = max(0.0, min(prefix_scale_alpha, min(1.0, cap_ratio)))
+                        else:
+                            alpha_eff = 0.0
+                        T_pref_inclusive: int = int(alpha_eff * float(boundary_inclusive))
+                        # Debug print for cap diagnostics
+                        if debug:
+                            max_new_est = T_pref_inclusive + seq_len_q
+                            print(
+                                f"    [Cap] B_max={max_position_id_allowed}, boundary={boundary_inclusive}, "
+                                f"L_q={seq_len_q}, alpha_user={prefix_scale_alpha:.6f}, alpha_eff={alpha_eff:.6f}, "
+                                f"T_pref={T_pref_inclusive}, max_new_est={max_new_est}"
+                            )
+                        # Sanity: estimated max must fit cap
+                        assert (T_pref_inclusive + seq_len_q) <= max_position_id_allowed, (
+                            f"[FATAL] Estimated max_new={T_pref_inclusive + seq_len_q} exceeds cap {max_position_id_allowed}"
+                        )
                         # Determine requested K and cap it so that target_high_inclusive >= target_low
                         K_requested: int = max(0, min(prefix_freeze_tail_k, max(0, num_prefix_keys - S)))
                         K_cap_by_target: int = max(0, T_pref_inclusive - S)
@@ -920,10 +961,14 @@ def get_masked_attention_output(
                             middle_orig_positions: torch.Tensor = position_ids_k_actual[0, middle_indices_sorted]
                             min_mid: int = int(middle_orig_positions.min().item())
                             max_mid: int = int(middle_orig_positions.max().item())
-                            # boundary_inclusive and T_pref_inclusive already computed above
                             # Target band for middle: [S .. T_pref_inclusive - K]
                             target_low: int = S
                             target_high_inclusive: int = T_pref_inclusive - K
+                            # Fatal if target range invalid (never silently fallback)
+                            assert (target_high_inclusive >= target_low) and (max_mid >= min_mid), (
+                                f"[FATAL] Invalid middle target range: target_low={target_low}, "
+                                f"target_high_inclusive={target_high_inclusive}, S={S}, K={K}, T_pref={T_pref_inclusive}"
+                            )
                             if target_high_inclusive >= target_low and max_mid >= min_mid:
                                 target_span: int = target_high_inclusive - target_low
                                 denom_mid: int = max(1, max_mid - min_mid)
@@ -939,16 +984,12 @@ def get_masked_attention_output(
                                 )
                                 if enforce_monotone_prefix and middle_new_positions.numel() > 0:
                                     # Ensure non-decreasing sequence to avoid duplicates regression
-                                    # (keep within [target_low, target_high_inclusive])
                                     running_max: int = int(middle_new_positions[0].item())
                                     middle_new_positions_list: List[int] = middle_new_positions.cpu().tolist()
                                     for idx in range(1, len(middle_new_positions_list)):
                                         if middle_new_positions_list[idx] < running_max:
                                             middle_new_positions_list[idx] = running_max
-                                        running_max = min(
-                                            target_high_inclusive,
-                                            max(running_max, middle_new_positions_list[idx]),
-                                        )
+                                        running_max = min(target_high_inclusive, max(running_max, middle_new_positions_list[idx]))
                                     middle_new_positions = torch.tensor(
                                         middle_new_positions_list, device=middle_new_positions.device, dtype=torch.long
                                     )
@@ -974,21 +1015,40 @@ def get_masked_attention_output(
                                         sample_orig_tail: torch.Tensor = position_ids_k_actual[0, sample_idxs_tail]
                                         sample_new_tail: torch.Tensor = position_ids_k_per_head[0, head_idx, sample_idxs_tail]
                                         print(f"      Middle sample tail orig={sample_orig_tail.tolist()} -> new={sample_new_tail.tolist()}")
-                            else:
-                                # Fallback: keep middle band original positions to avoid zeros
-                                position_ids_k_per_head[0, head_idx, middle_indices_sorted] = middle_orig_positions
-                                if debug:
-                                    assert False, "Skipped middle scaling due to insufficient target range"
-                                    print(
-                                        f"    [TwoBand Scaling] Skipped middle scaling due to insufficient target range: "
-                                        f"target_low={target_low}, target_high_inclusive={target_high_inclusive}, "
-                                        f"S={S}, K={K}, T_pref={T_pref_inclusive}"
-                                    )
+                            # (No else branch: invalid target is fatal above)
                         else:
                             if debug:
                                 print(
                                     f"    [TwoBand Scaling] No middle band to scale (S={S}, K={K}, num_prefix={num_prefix_keys})"
                                 )
+                        # Optional: translate-pack K+Chunk after middle band at m_end (always considered inside two-band branch)
+                        if pack_k_chunk_translation:
+                            # m_end is the end of the compressed middle band in target space
+                            m_end_for_pack = int(max(S, T_pref_inclusive - K))
+                            # Δ shifts K tail and Chunk together without changing their internal distances
+                            pack_delta = int((m_end_for_pack + K + 1) - min_query_position)
+                            # Overwrite tail positions with translated originals (ensure overwrite even if set earlier)
+                            if K > 0:
+                                tail_indices_re: List[int] = prefix_key_indices_sorted[-K:]
+                                tail_positions_orig: torch.Tensor = position_ids_k_actual[0, tail_indices_re]
+                                translated_tail: torch.Tensor = (tail_positions_orig + pack_delta).to(
+                                    dtype=torch.long, device=position_ids_k_per_head.device
+                                )
+                                position_ids_k_per_head[0, head_idx, tail_indices_re] = translated_tail
+                            if debug:
+                                k_start_new: int = m_end_for_pack + 1
+                                k_end_new: int = m_end_for_pack + K
+                                chunk_start_new: int = m_end_for_pack + K + 1
+                                chunk_end_new: int = m_end_for_pack + K + seq_len_q
+                                print(
+                                    f"    [Pack K+Chunk] M_end={m_end_for_pack}, Δ={pack_delta}, "
+                                    f"K=[{k_start_new}..{k_end_new}], Chunk=[{chunk_start_new}..{chunk_end_new}]"
+                                )
+                            # Hard cap verification post-pack (per head)
+                            # Estimate maximum new positions via computed ranges
+                            assert (m_end_for_pack + K + seq_len_q) <= max_position_id_allowed, (
+                                f"[FATAL] Post-pack max_new={m_end_for_pack + K + seq_len_q} exceeds cap {max_position_id_allowed}"
+                            )
                     elif use_proportional_prefix_scaling:
                         # Scale prefix into [0, target_prefix_max_inclusive] using ratio cap alpha.
                         # Base boundary is pre-chunk span: [0 .. min_query_position-1]
@@ -1050,19 +1110,29 @@ def get_masked_attention_output(
                 # num_prefix_keys
                 ### CHANGE CHANGE CHANGE
                 
-                # Assign contiguous IDs to all current chunk keys starting from current_chunk_start (vectorized)
+                # Assign current chunk key positions
                 if len(all_current_chunk_key_indices_sorted) > 0:
-                    if use_proportional_prefix_scaling:
+                    # Keep current chunk unchanged ONLY for pure proportional mode (not when two-band is active)
+                    if use_proportional_prefix_scaling and not use_two_band_prefix_scaling:
                         # Keep current chunk positions UNCHANGED (copy original positions)
                         original_current_chunk_positions: torch.Tensor = position_ids_k_actual[0, all_current_chunk_key_indices_sorted]
                         position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted] = original_current_chunk_positions
                     else:
-                        num_current_chunk_keys: int = len(all_current_chunk_key_indices_sorted)
-                        new_current_chunk_positions: torch.Tensor = torch.arange(
-                            current_chunk_start, current_chunk_start + num_current_chunk_keys,
-                            device=position_ids_k_per_head.device, dtype=torch.long
-                        )
-                        position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted] = new_current_chunk_positions
+                        if pack_k_chunk_translation and pack_delta is not None:
+                            # Pure translation for current chunk keys: new = orig + Δ
+                            original_current_chunk_positions: torch.Tensor = position_ids_k_actual[0, all_current_chunk_key_indices_sorted]
+                            translated_chunk: torch.Tensor = (original_current_chunk_positions + pack_delta).to(
+                                dtype=torch.long, device=position_ids_k_per_head.device
+                            )
+                            position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted] = translated_chunk
+                        else:
+                            # Default: contiguous placement after prefix
+                            num_current_chunk_keys: int = len(all_current_chunk_key_indices_sorted)
+                            new_current_chunk_positions: torch.Tensor = torch.arange(
+                                current_chunk_start, current_chunk_start + num_current_chunk_keys,
+                                device=position_ids_k_per_head.device, dtype=torch.long
+                            )
+                            position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted] = new_current_chunk_positions
                 # Diagnostic prints (only if SPARSE_DEBUG enabled)
                 # Commented out verbose per-head details - uncomment if needed for debugging
                 # if debug:
@@ -1129,6 +1199,15 @@ def get_masked_attention_output(
                 position_ids_q_per_head[0, head_idx, :] = torch.tensor(
                     query_new_positions, device=position_ids_q_per_head.device, dtype=torch.long
                 )
+                
+                # Adversarial override disabled
+                # adversarial_base: int = 10_000_000
+                # position_ids_q_per_head[0, head_idx, :] = 1
+                # position_ids_k_per_head[0, head_idx, :] = (
+                #     adversarial_base + torch.arange(
+                #         seq_len_k, device=position_ids_k_per_head.device, dtype=torch.long
+                #     )
+                # )
                 
                 # Diagnostic print for queries (only if SPARSE_DEBUG enabled)
                 # Commented out verbose query position details - uncomment if needed for debugging
@@ -1567,6 +1646,10 @@ def get_masked_attention_output(
                 "[CRITICAL ERROR] Reroped weights are identical to original! "
                 "This suggests position reassignment had no effect or failed silently."
             )
+            if debug:
+                sum_abs_diff = torch.abs(exp_attention_weights - exp_attention_weights_reroped).sum().item()
+                layer_id = kwargs.get("layer_idx", "?")
+                print(f"  [APPLY] layer={layer_id} replacing original weights with reroped (sum_abs_diff={sum_abs_diff:.6f})")
             
             exp_attention_weights = exp_attention_weights_reroped.to(exp_attention_weights.dtype)
         except Exception as e:

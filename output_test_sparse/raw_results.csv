@@ -213,7 +213,11 @@ Yazoo land scandal
 Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 ","Question: Which case was brought to court first Miller v. California or Gates v. Collier ?
-", Miller v. California,1.200622320175171,['Miller v. California'],hotpotqa,dense,
+"," The
+ Prison
+ The
+ Prison
+",3.0914950370788574,['Miller v. California'],hotpotqa,dense,
 "Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 The following are given passages.
@@ -428,7 +432,7 @@ Yazoo land scandal
 Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 ","Question: Which case was brought to court first Miller v. California or Gates v. Collier ?
-", Gates v.,168.4533977508545,['Miller v. California'],hotpotqa,sparse,
+", Gates v. Collier,405.10798740386963,['Miller v. California'],hotpotqa,sparse,
 "Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 The following are given passages.
@@ -754,7 +758,10 @@ Around the World in 80 Days Carpet Bag
 Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 ","Question: The actor that plays Phileas Fogg in ""Around the World in 80 Days"", co-starred with Gary Cooper in a 1939 Goldwyn Productions film based on a novel by what author?
-", Charles L. Clifford,1.0746800899505615,['Charles L. Clifford'],hotpotqa,dense,
+"," 
+T his 
+T his 
+T",4.125655651092529,['Charles L. Clifford'],hotpotqa,dense,
 "Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 The following are given passages.
@@ -1080,4 +1087,4 @@ Around the World in 80 Days Carpet Bag
 Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 ","Question: The actor that plays Phileas Fogg in ""Around the World in 80 Days"", co-starred with Gary Cooper in a 1939 Goldwyn Productions film based on a novel by what author?
-"," Charles Lytrophilia, and his",421.8792231082916,['Charles L. Clifford'],hotpotqa,sparse,
+", Jules Verne,590.5666081905365,['Charles L. Clifford'],hotpotqa,sparse,

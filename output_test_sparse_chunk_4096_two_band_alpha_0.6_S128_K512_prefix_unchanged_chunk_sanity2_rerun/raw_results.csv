@@ -213,7 +213,7 @@ Yazoo land scandal
 Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 ","Question: Which case was brought to court first Miller v. California or Gates v. Collier ?
-", Miller v. California,1.200622320175171,['Miller v. California'],hotpotqa,dense,
+", Miller v. California,1.1725349426269531,['Miller v. California'],hotpotqa,dense,
 "Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 The following are given passages.
@@ -428,7 +428,7 @@ Yazoo land scandal
 Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 ","Question: Which case was brought to court first Miller v. California or Gates v. Collier ?
-", Gates v.,168.4533977508545,['Miller v. California'],hotpotqa,sparse,
+", Miller v. California,186.63321566581726,['Miller v. California'],hotpotqa,sparse,
 "Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 The following are given passages.
@@ -754,7 +754,7 @@ Around the World in 80 Days Carpet Bag
 Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 ","Question: The actor that plays Phileas Fogg in ""Around the World in 80 Days"", co-starred with Gary Cooper in a 1939 Goldwyn Productions film based on a novel by what author?
-", Charles L. Clifford,1.0746800899505615,['Charles L. Clifford'],hotpotqa,dense,
+", Charles L. Clifford,1.094087839126587,['Charles L. Clifford'],hotpotqa,dense,
 "Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 The following are given passages.
@@ -1080,4 +1080,4 @@ Around the World in 80 Days Carpet Bag
 Answer the question based on the given passages. Only give me the answer and do not output any other words.
 
 ","Question: The actor that plays Phileas Fogg in ""Around the World in 80 Days"", co-starred with Gary Cooper in a 1939 Goldwyn Productions film based on a novel by what author?
-"," Charles Lytrophilia, and his",421.8792231082916,['Charles L. Clifford'],hotpotqa,sparse,
+", Charles L. Clifford,321.3039472103119,['Charles L. Clifford'],hotpotqa,sparse,
