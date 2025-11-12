@@ -1,0 +1,326 @@
+{
+  "dense": [
+    {
+      "response": " Gates v. Collier",
+      "elapsed_s": 3.0866527557373047
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 4.460360527038574
+    },
+    {
+      "response": " Lowell, Michigan.",
+      "elapsed_s": 4.044783115386963
+    },
+    {
+      "response": " Jupiter",
+      "elapsed_s": 3.977306842803955
+    },
+    {
+      "response": " film",
+      "elapsed_s": 4.616189479827881
+    },
+    {
+      "response": " Parliament",
+      "elapsed_s": 4.2426605224609375
+    },
+    {
+      "response": " Mayiladuthurai",
+      "elapsed_s": 4.420579195022583
+    },
+    {
+      "response": " Pleiospilos",
+      "elapsed_s": 0.7559890747070312
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 2.778472900390625
+    },
+    {
+      "response": " The Rebirth",
+      "elapsed_s": 1.8980281352996826
+    },
+    {
+      "response": " October 13, 1980",
+      "elapsed_s": 4.100768327713013
+    },
+    {
+      "response": " Cartoon Network",
+      "elapsed_s": 3.894118309020996
+    },
+    {
+      "response": " Mary Astor",
+      "elapsed_s": 4.266683578491211
+    },
+    {
+      "response": " number five",
+      "elapsed_s": 3.6596803665161133
+    },
+    {
+      "response": " None mentioned in the passage.",
+      "elapsed_s": 4.975393056869507
+    },
+    {
+      "response": " 2000",
+      "elapsed_s": 2.8129522800445557
+    },
+    {
+      "response": " Claudio L\u00f3pez, Mario Kempes",
+      "elapsed_s": 1.3764042854309082
+    },
+    {
+      "response": " Ronald Reagan",
+      "elapsed_s": 4.010068416595459
+    },
+    {
+      "response": " Rihanna's \"We Found Love\"",
+      "elapsed_s": 3.452967405319214
+    },
+    {
+      "response": " The Traveling Wilburys",
+      "elapsed_s": 3.848951816558838
+    },
+    {
+      "response": " Cartoon Cartoon Fridays",
+      "elapsed_s": 2.487466335296631
+    },
+    {
+      "response": " Sydney, in the state of New South",
+      "elapsed_s": 3.7937099933624268
+    },
+    {
+      "response": " Jones Beach Island.",
+      "elapsed_s": 1.0786876678466797
+    },
+    {
+      "response": " PewDiePie",
+      "elapsed_s": 2.5598976612091064
+    },
+    {
+      "response": " It's Always Sunny in Philadelphia",
+      "elapsed_s": 3.492260694503784
+    },
+    {
+      "response": " Blue Valley Northwest High School",
+      "elapsed_s": 2.066354751586914
+    },
+    {
+      "response": " Ribosomes",
+      "elapsed_s": 4.009000062942505
+    },
+    {
+      "response": " Dracula",
+      "elapsed_s": 2.0977134704589844
+    },
+    {
+      "response": " Band-e Amir National Park.",
+      "elapsed_s": 0.7306489944458008
+    },
+    {
+      "response": " USC",
+      "elapsed_s": 4.655916690826416
+    },
+    {
+      "response": " 12,817",
+      "elapsed_s": 4.067167520523071
+    },
+    {
+      "response": " A123 Systems",
+      "elapsed_s": 3.4733026027679443
+    },
+    {
+      "response": " 12,982",
+      "elapsed_s": 3.4431190490722656
+    },
+    {
+      "response": " Taoiseach",
+      "elapsed_s": 4.631596803665161
+    },
+    {
+      "response": " None",
+      "elapsed_s": 3.2477874755859375
+    },
+    {
+      "response": " Mika H\u00e4kkinen",
+      "elapsed_s": 4.755129098892212
+    },
+    {
+      "response": " Minority Report",
+      "elapsed_s": 3.782839059829712
+    },
+    {
+      "response": " Darci Kistler",
+      "elapsed_s": 3.2095136642456055
+    },
+    {
+      "response": " Xcel Energy, 3M,",
+      "elapsed_s": 4.075906038284302
+    },
+    {
+      "response": " Around the World in 80 Days",
+      "elapsed_s": 3.9408862590789795
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Gates v. Collier",
+      "elapsed_s": 15.259806156158447
+    },
+    {
+      "response": " Charles L. Clifford.",
+      "elapsed_s": 30.584113359451294
+    },
+    {
+      "response": " Lowell, Michigan.",
+      "elapsed_s": 27.486405611038208
+    },
+    {
+      "response": " Jupiter",
+      "elapsed_s": 29.24331521987915
+    },
+    {
+      "response": " Film.",
+      "elapsed_s": 22.65700936317444
+    },
+    {
+      "response": " Parliament.",
+      "elapsed_s": 21.727696657180786
+    },
+    {
+      "response": " Mayiladuthurai District, Tran",
+      "elapsed_s": 26.909258127212524
+    },
+    {
+      "response": " Pleiospilos",
+      "elapsed_s": 2.920858383178711
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 15.031220197677612
+    },
+    {
+      "response": " The Rebirth",
+      "elapsed_s": 8.604925632476807
+    },
+    {
+      "response": " October 13, 1980",
+      "elapsed_s": 28.96231961250305
+    },
+    {
+      "response": " Cartoon Network.",
+      "elapsed_s": 27.417125463485718
+    },
+    {
+      "response": " Mary Astor",
+      "elapsed_s": 24.923739433288574
+    },
+    {
+      "response": " 6",
+      "elapsed_s": 10.990500688552856
+    },
+    {
+      "response": " The Forests of Mara and Mondrem",
+      "elapsed_s": 28.484445810317993
+    },
+    {
+      "response": " 2000",
+      "elapsed_s": 16.38481307029724
+    },
+    {
+      "response": " Claudio L\u00f3pez, Mario Kempes,",
+      "elapsed_s": 6.63132119178772
+    },
+    {
+      "response": " Ronald Reagan",
+      "elapsed_s": 28.707201719284058
+    },
+    {
+      "response": " Rihanna's \"We Found Love\".",
+      "elapsed_s": 21.938802003860474
+    },
+    {
+      "response": " The Traveling Wilburys",
+      "elapsed_s": 26.223119497299194
+    },
+    {
+      "response": " Cartoon Cartoon Fridays",
+      "elapsed_s": 14.51268458366394
+    },
+    {
+      "response": " Sydney, in the state of New South",
+      "elapsed_s": 25.715202808380127
+    },
+    {
+      "response": " Jones Beach Island.",
+      "elapsed_s": 4.903343439102173
+    },
+    {
+      "response": " PewDiePie",
+      "elapsed_s": 14.213781833648682
+    },
+    {
+      "response": " It's Always Sunny in Philadelphia.",
+      "elapsed_s": 22.895633220672607
+    },
+    {
+      "response": " Blue Valley Northwest High School",
+      "elapsed_s": 10.072279214859009
+    },
+    {
+      "response": " Ribosomes.",
+      "elapsed_s": 29.235814571380615
+    },
+    {
+      "response": " Pistacia.",
+      "elapsed_s": 11.086657285690308
+    },
+    {
+      "response": " Band-e Amir National Park",
+      "elapsed_s": 1.2042229175567627
+    },
+    {
+      "response": " USC",
+      "elapsed_s": 29.42234992980957
+    },
+    {
+      "response": " 12,817",
+      "elapsed_s": 27.939075231552124
+    },
+    {
+      "response": " A123 Systems",
+      "elapsed_s": 22.149238348007202
+    },
+    {
+      "response": " Traverse City",
+      "elapsed_s": 20.17697548866272
+    },
+    {
+      "response": " Taoiseach.",
+      "elapsed_s": 27.63078808784485
+    },
+    {
+      "response": " None",
+      "elapsed_s": 18.6659152507782
+    },
+    {
+      "response": " Mika H\u00e4kkinen",
+      "elapsed_s": 30.323631763458252
+    },
+    {
+      "response": " Minority Report.",
+      "elapsed_s": 28.1641948223114
+    },
+    {
+      "response": " Darci Kistler",
+      "elapsed_s": 21.271286725997925
+    },
+    {
+      "response": " 3M, Corning Inc.,",
+      "elapsed_s": 28.876231908798218
+    },
+    {
+      "response": " Around the World in 80 Days.",
+      "elapsed_s": 28.280682802200317
+    }
+  ]
+}

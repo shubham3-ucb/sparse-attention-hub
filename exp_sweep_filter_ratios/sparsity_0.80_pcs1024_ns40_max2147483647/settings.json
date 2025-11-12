@@ -1,0 +1,12 @@
+{
+  "model_name": "meta-llama/Meta-Llama-3-8B-Instruct",
+  "oracle_topk_heavy_size": 0.80,
+  "prefill_chunk_size": 1024,
+  "num_samples": 40,
+  "max_context_length": 2147483647,
+  "enable_position_reassignment": true,
+  "extend_context": true,
+  "compare_mask_roped_vs_unroped": true,
+  "sparse_debug": true,
+  "cap_b_max": 8192
+}

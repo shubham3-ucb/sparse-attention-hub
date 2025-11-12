@@ -1,0 +1,22 @@
+{
+  "dense": [
+    {
+      "response": " The\n Prison\n The\n Prison\n",
+      "elapsed_s": 3.6117353439331055
+    },
+    {
+      "response": " He was his \nT his \nT",
+      "elapsed_s": 4.44325065612793
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Gates v. Collier",
+      "elapsed_s": 741.3926560878754
+    },
+    {
+      "response": " Charles L.",
+      "elapsed_s": 1123.505588054657
+    }
+  ]
+}

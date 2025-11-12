@@ -1,0 +1,10 @@
+{
+  "model_name": "meta-llama/Meta-Llama-3-8B-Instruct",
+  "prefill_chunk_size": 4096,
+  "num_samples": 2,
+  "max_context_length": 2147483647,
+  "enable_position_reassignment": true,
+  "extend_context": true,
+  "compare_mask_roped_vs_unroped": true,
+  "sparse_debug": true
+}

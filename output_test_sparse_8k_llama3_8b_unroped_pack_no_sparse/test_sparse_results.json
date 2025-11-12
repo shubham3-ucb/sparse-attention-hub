@@ -31,6 +31,14 @@
     {
       "response": " Pleiospilos",
       "elapsed_s": 0.544724702835083
+    },
+    {
+      "response": " The\n the campus the\n The campus",
+      "elapsed_s": 2.8891844749450684
+    },
+    {
+      "response": " Fitz and the Tantrums.",
+      "elapsed_s": 2.0077035427093506
     }
   ],
   "sparse": [
@@ -65,6 +73,14 @@
     {
       "response": " Pleiospilos",
       "elapsed_s": 75.82941246032715
+    },
+    {
+      "response": " 2013",
+      "elapsed_s": 461.9955897331238
+    },
+    {
+      "response": " The Rebirth",
+      "elapsed_s": 332.21251797676086
     }
   ]
 }

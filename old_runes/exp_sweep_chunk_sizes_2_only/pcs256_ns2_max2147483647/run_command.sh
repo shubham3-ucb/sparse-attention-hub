@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "/home/nvidia/shubham/sparse/new_sparse/sparse-attention-hub"
+OUT="/home/nvidia/shubham/sparse/new_sparse/sparse-attention-hub/exp_sweep_chunk_sizes/pcs256_ns2_max2147483647" MODEL_NAME="meta-llama/Meta-Llama-3-8B-Instruct" PREFILL_CHUNK_SIZE=256 EXTEND_CONTEXT=1 ENABLE_POSITION_REASSIGNMENT=1 COMPARE_MASK_ROPED_VS_UNROPED=1 SPARSE_DEBUG=1 MAX_CONTEXT_LENGTH=2147483647 OUTPUT_DIR="/home/nvidia/shubham/sparse/new_sparse/sparse-attention-hub/exp_sweep_chunk_sizes/pcs256_ns2_max2147483647" SPARSE_LOG_PATH="/home/nvidia/shubham/sparse/new_sparse/sparse-attention-hub/exp_sweep_chunk_sizes/pcs256_ns2_max2147483647/hf_prefill.log" NUM_SAMPLES=2 python test_sparse_oracle.py > "/home/nvidia/shubham/sparse/new_sparse/sparse-attention-hub/exp_sweep_chunk_sizes/pcs256_ns2_max2147483647/log.txt" 2>&1
