@@ -1,0 +1,30 @@
+{
+  "dense": [
+    {
+      "response": " The\n Prison\n The\n Prison\n",
+      "elapsed_s": 3.7192351818084717
+    },
+    {
+      "response": " He was his \nT his \nT",
+      "elapsed_s": 5.569932222366333
+    },
+    {
+      "response": " \nM coach the 1 the ",
+      "elapsed_s": 5.70155143737793
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Gates v. Collier",
+      "elapsed_s": 1053.7546751499176
+    },
+    {
+      "response": " Charles L.",
+      "elapsed_s": 1839.078523159027
+    },
+    {
+      "response": " East Lansing",
+      "elapsed_s": 1771.0153486728668
+    }
+  ]
+}

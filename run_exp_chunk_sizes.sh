@@ -6,7 +6,7 @@ REPO="/home/nvidia/shubham/sparse/new_sparse/sparse-attention-hub"
 MODEL_NAME="meta-llama/Meta-Llama-3-8B-Instruct"
 NUM_SAMPLES="40"
 MAX_CONTEXT_LENGTH="${MAX_CONTEXT_LENGTH:-2147483647}"
-SIZES=("256" "1024" "4096")
+SIZES=("512")
 ROOT_OUT="${REPO}/exp_sweep_chunk_sizes"
 
 # Activate conda env

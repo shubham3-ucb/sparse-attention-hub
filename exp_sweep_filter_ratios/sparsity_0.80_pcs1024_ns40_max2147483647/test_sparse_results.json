@@ -2,109 +2,325 @@
   "dense": [
     {
       "response": " The\n Prison\n The\n Prison\n",
-      "elapsed_s": 4.444235801696777
+      "elapsed_s": 3.856609344482422
     },
     {
       "response": " He was his \nT his \nT",
-      "elapsed_s": 4.444149971008301
+      "elapsed_s": 5.206324815750122
     },
     {
       "response": " \nthe coached the 1 the ",
-      "elapsed_s": 4.452695608139038
+      "elapsed_s": 4.428809642791748
     },
     {
       "response": " \nthe \nthe \nthe \nthe",
-      "elapsed_s": 7.111274242401123
+      "elapsed_s": 4.438964605331421
     },
     {
       "response": " True [the \nthe \nthe \n",
-      "elapsed_s": 3.845696210861206
+      "elapsed_s": 4.555250644683838
     },
     {
       "response": " the  the 2010 and the",
-      "elapsed_s": 3.8733420372009277
+      "elapsed_s": 3.8546955585479736
     },
     {
       "response": " the \nD D.D D\n D",
-      "elapsed_s": 4.310359001159668
+      "elapsed_s": 4.318026304244995
     },
     {
       "response": " Pleiospilos",
-      "elapsed_s": 0.5895304679870605
+      "elapsed_s": 0.5890820026397705
     },
     {
       "response": " The\n the campus the\n The campus",
-      "elapsed_s": 3.104789972305298
+      "elapsed_s": 3.098515272140503
     },
     {
       "response": " Fitz and the Tantrums.",
-      "elapsed_s": 2.135873317718506
+      "elapsed_s": 2.1508266925811768
     },
     {
       "response": " the album the album the album the album",
-      "elapsed_s": 4.449112892150879
+      "elapsed_s": 4.40041971206665
     },
     {
       "response": " 13\n\n30 30 13",
-      "elapsed_s": 4.307255744934082
+      "elapsed_s": 5.42208456993103
     },
     {
       "response": " Ald Ald Ald Ald Ald Ald Ald Ald",
-      "elapsed_s": 4.198571443557739
+      "elapsed_s": 4.183355331420898
+    },
+    {
+      "response": " The song and the. The song the",
+      "elapsed_s": 2.5757174491882324
+    },
+    {
+      "response": " \nfirst to a \nthe \"sh",
+      "elapsed_s": 4.4214255809783936
+    },
+    {
+      "response": " the biggest  V his V the the",
+      "elapsed_s": 3.1090097427368164
+    },
+    {
+      "response": " Claudio L\u00f3pez",
+      "elapsed_s": 1.4268183708190918
+    },
+    {
+      "response": " W. It was a \nP in",
+      "elapsed_s": 6.6183741092681885
+    },
+    {
+      "response": " the \"the \"the \"the \"",
+      "elapsed_s": 3.685065507888794
+    },
+    {
+      "response": " N the \nshe \"she \"a",
+      "elapsed_s": 4.1561195850372314
+    },
+    {
+      "response": " The 1\n The 1\n",
+      "elapsed_s": 2.772425413131714
+    },
+    {
+      "response": " the city the city the G the city",
+      "elapsed_s": 6.569276571273804
+    },
+    {
+      "response": " The Atlantic Ocean.",
+      "elapsed_s": 1.1480247974395752
+    },
+    {
+      "response": " The and the final 1\n The",
+      "elapsed_s": 2.9099156856536865
+    },
+    {
+      "response": " the judge the time on the judge the",
+      "elapsed_s": 4.305785655975342
+    },
+    {
+      "response": " High School in the 2009 School",
+      "elapsed_s": 2.302492618560791
+    },
+    {
+      "response": " the  S-some of the ",
+      "elapsed_s": 4.412730932235718
+    },
+    {
+      "response": " The family (Dracula. The family",
+      "elapsed_s": 2.4219324588775635
+    },
+    {
+      "response": " Band-e Amir",
+      "elapsed_s": 0.7354915142059326
+    },
+    {
+      "response": " \nThe 1950- \nthe",
+      "elapsed_s": 4.375692844390869
+    },
+    {
+      "response": " \nthe\n the\n the\n the",
+      "elapsed_s": 6.521666765213013
+    },
+    {
+      "response": " \nA water on the \nA water",
+      "elapsed_s": 3.8228561878204346
+    },
+    {
+      "response": " \nP \nP \nP \nP",
+      "elapsed_s": 3.7437241077423096
+    },
+    {
+      "response": " the party on the 27 to the",
+      "elapsed_s": 4.277923822402954
+    },
+    {
+      "response": " the  the  the  the ",
+      "elapsed_s": 3.6031367778778076
+    },
+    {
+      "response": " the 1 his the 199 on",
+      "elapsed_s": 4.42069673538208
+    },
+    {
+      "response": " the \nLo\n Lo \nLo\n",
+      "elapsed_s": 4.1969709396362305
+    },
+    {
+      "response": " the  The ballet was a  The",
+      "elapsed_s": 3.498086929321289
+    },
+    {
+      "response": " the United at the  the \nthe",
+      "elapsed_s": 4.334956407546997
+    },
+    {
+      "response": " the S the \nthe\n\n S\n",
+      "elapsed_s": 5.064924001693726
     }
   ],
   "sparse": [
     {
       "response": " Miller v. California",
-      "elapsed_s": 816.0893294811249
+      "elapsed_s": 856.0299696922302
     },
     {
       "response": " Charles L.",
-      "elapsed_s": 1322.4256823062897
+      "elapsed_s": 1357.0868172645569
     },
     {
       "response": " Lowell",
-      "elapsed_s": 1118.6669247150421
+      "elapsed_s": 1134.6974248886108
     },
     {
       "response": " Mars",
-      "elapsed_s": 1145.012934923172
+      "elapsed_s": 1131.2909235954285
     },
     {
       "response": " Film",
-      "elapsed_s": 972.7302887439728
+      "elapsed_s": 966.8167381286621
     },
     {
       "response": " Parliament",
-      "elapsed_s": 973.4945676326752
+      "elapsed_s": 975.7363312244415
     },
     {
       "response": " Kumbakonam",
-      "elapsed_s": 1481.477391242981
+      "elapsed_s": 1488.4474878311157
     },
     {
       "response": " Pleiospilos",
-      "elapsed_s": 92.70384693145752
+      "elapsed_s": 96.02635264396667
     },
     {
       "response": " 2013",
-      "elapsed_s": 781.6268451213837
+      "elapsed_s": 784.045529127121
     },
     {
       "response": " The Rebirth",
-      "elapsed_s": 466.2710862159729
+      "elapsed_s": 466.037047624588
     },
     {
       "response": " October 13, 1980",
-      "elapsed_s": 1713.558785200119
+      "elapsed_s": 1721.4137210845947
     },
     {
       "response": " Adult Swim",
-      "elapsed_s": 1218.4906713962555
+      "elapsed_s": 1219.4296185970306
     },
     {
       "response": " Mary Astor",
-      "elapsed_s": 1277.7509944438934
+      "elapsed_s": 1292.6723597049713
+    },
+    {
+      "response": " number 5",
+      "elapsed_s": 644.7457809448242
+    },
+    {
+      "response": " None.",
+      "elapsed_s": 1230.7367813587189
+    },
+    {
+      "response": " 2000",
+      "elapsed_s": 795.8270337581635
+    },
+    {
+      "response": " Claudio L\u00f3pez",
+      "elapsed_s": 292.51487398147583
+    },
+    {
+      "response": " Ronald Reagan",
+      "elapsed_s": 1233.9558050632477
+    },
+    {
+      "response": " Rihanna's \"We Found Love\"",
+      "elapsed_s": 1359.6513319015503
+    },
+    {
+      "response": " George Harrison",
+      "elapsed_s": 1213.5538349151611
+    },
+    {
+      "response": " Cartoon Cartoon Fridays",
+      "elapsed_s": 670.1007933616638
+    },
+    {
+      "response": " Kansas",
+      "elapsed_s": 988.161378622055
+    },
+    {
+      "response": " The Atlantic Ocean.",
+      "elapsed_s": 225.10714840888977
+    },
+    {
+      "response": " PewDiePie",
+      "elapsed_s": 753.863748550415
+    },
+    {
+      "response": " The Young and the Restless",
+      "elapsed_s": 1291.3541040420532
+    },
+    {
+      "response": " 79th",
+      "elapsed_s": 535.4745237827301
+    },
+    {
+      "response": " Ribosomes",
+      "elapsed_s": 1237.0889384746552
+    },
+    {
+      "response": " Dracula",
+      "elapsed_s": 504.6518039703369
+    },
+    {
+      "response": " Band-e Amir",
+      "elapsed_s": 118.84221744537354
+    },
+    {
+      "response": " USC",
+      "elapsed_s": 1132.5036709308624
+    },
+    {
+      "response": " 12,817",
+      "elapsed_s": 1439.152996301651
+    },
+    {
+      "response": " A123 Systems",
+      "elapsed_s": 1149.0292048454285
+    },
+    {
+      "response": " 12,982",
+      "elapsed_s": 1136.982436656952
+    },
+    {
+      "response": " Taoiseach",
+      "elapsed_s": 1312.4153728485107
+    },
+    {
+      "response": " None of the passages mention Vegepet",
+      "elapsed_s": 1345.0334079265594
+    },
+    {
+      "response": " Mika H\u00e4kkinen",
+      "elapsed_s": 1651.0168073177338
+    },
+    {
+      "response": " Constantine",
+      "elapsed_s": 1208.0955798625946
+    },
+    {
+      "response": " Darci Kistler",
+      "elapsed_s": 1158.370078086853
+    },
+    {
+      "response": " 3M, Corning Inc.,",
+      "elapsed_s": 1709.6752219200134
+    },
+    {
+      "response": " Summer Magic (1963)",
+      "elapsed_s": 1586.9335210323334
     }
   ]
 }

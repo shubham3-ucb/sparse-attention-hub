@@ -8,7 +8,7 @@ PREFILL_CHUNK_SIZE="${PREFILL_CHUNK_SIZE:-1024}"
 NUM_SAMPLES="${NUM_SAMPLES:-40}"
 MAX_CONTEXT_LENGTH="${MAX_CONTEXT_LENGTH:-2147483647}"
 CAP_B_MAX="8192"  # informational; enforced inside code
-SWEEP=("0.50" "0.80" "1.00")
+SWEEP=("0.10" "0.90")
 ROOT_OUT="${REPO}/exp_sweep_filter_ratios"
 
 # Activate conda env

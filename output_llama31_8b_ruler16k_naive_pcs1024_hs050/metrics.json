@@ -1,0 +1,18 @@
+{
+  "overall_score": 14.25,
+  "task_scores": {
+    "cwe": {
+      "string_match": 14.25
+    }
+  },
+  "context_length_scores": {
+    "16384": 14.25
+  },
+  "summary": {
+    "total_tasks": 1,
+    "total_samples": 80,
+    "context_lengths": [
+      "16384"
+    ]
+  }
+}

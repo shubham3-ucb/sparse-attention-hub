@@ -1,0 +1,326 @@
+{
+  "dense": [
+    {
+      "response": " \n1. attempt 2. position",
+      "elapsed_s": 4.853716611862183
+    },
+    {
+      "response": " \n1. being 2. trainer",
+      "elapsed_s": 4.71369743347168
+    },
+    {
+      "response": " \n\n1. atom 2. willing",
+      "elapsed_s": 4.3951416015625
+    },
+    {
+      "response": " \n\n1. systemize 2.",
+      "elapsed_s": 4.396563291549683
+    },
+    {
+      "response": " \n1. gopher 2.",
+      "elapsed_s": 5.105364084243774
+    },
+    {
+      "response": " \n\n1. word \n2. official",
+      "elapsed_s": 4.376158237457275
+    },
+    {
+      "response": " \n\n1. grass 2. welfare",
+      "elapsed_s": 4.432996511459351
+    },
+    {
+      "response": " \n\n1. psychology 2. position",
+      "elapsed_s": 5.284533500671387
+    },
+    {
+      "response": " \n1. everyone 2. dis",
+      "elapsed_s": 4.4025044441223145
+    },
+    {
+      "response": " \n1. floor 2. crafts",
+      "elapsed_s": 4.438102960586548
+    },
+    {
+      "response": " \n1. nit 2. cob",
+      "elapsed_s": 4.3553431034088135
+    },
+    {
+      "response": " \n1. cardigan 2.",
+      "elapsed_s": 4.411301136016846
+    },
+    {
+      "response": " \n1. own 2. f",
+      "elapsed_s": 4.92537784576416
+    },
+    {
+      "response": " \n\n1. the (appears ",
+      "elapsed_s": 4.435820817947388
+    },
+    {
+      "response": " \n\n1. windscreen 2.",
+      "elapsed_s": 5.38488245010376
+    },
+    {
+      "response": " \n\n1. teapot 2.",
+      "elapsed_s": 4.3717591762542725
+    },
+    {
+      "response": " \n1. everyone 2. fire",
+      "elapsed_s": 4.406422853469849
+    },
+    {
+      "response": " \n1. layer 2. viewer",
+      "elapsed_s": 4.4425952434539795
+    },
+    {
+      "response": " \n1. object 2. include",
+      "elapsed_s": 4.438608646392822
+    },
+    {
+      "response": " \n1. consideration 2. e",
+      "elapsed_s": 4.436269760131836
+    },
+    {
+      "response": " \n1. bill 2. chap",
+      "elapsed_s": 4.86788272857666
+    },
+    {
+      "response": " \n1. come 2. vine",
+      "elapsed_s": 4.375420808792114
+    },
+    {
+      "response": " \n1. the 2. and",
+      "elapsed_s": 4.431239366531372
+    },
+    {
+      "response": " \n\n1. fact 2. fact",
+      "elapsed_s": 4.378340721130371
+    },
+    {
+      "response": " \n1. mile 2. g",
+      "elapsed_s": 4.468787670135498
+    },
+    {
+      "response": " \n\n1. silver 2. woodland",
+      "elapsed_s": 4.845083475112915
+    },
+    {
+      "response": "1. the 2. and ",
+      "elapsed_s": 4.44443678855896
+    },
+    {
+      "response": " \n1. phase 2. sport",
+      "elapsed_s": 4.373717784881592
+    },
+    {
+      "response": " \n\n1. numerous 2. kits",
+      "elapsed_s": 5.151350975036621
+    },
+    {
+      "response": " \n\n1. boot 2. chicken",
+      "elapsed_s": 4.457038402557373
+    },
+    {
+      "response": "1. intention 2. trink",
+      "elapsed_s": 6.162591457366943
+    },
+    {
+      "response": " \n1. city 2. relative",
+      "elapsed_s": 7.075329065322876
+    },
+    {
+      "response": " \n1. set 2. centre",
+      "elapsed_s": 4.380842208862305
+    },
+    {
+      "response": " \n\n1. help 2. clerk",
+      "elapsed_s": 5.36673378944397
+    },
+    {
+      "response": " \n1. route 2. wall",
+      "elapsed_s": 4.414498329162598
+    },
+    {
+      "response": " \n\n1. beer 2. chick",
+      "elapsed_s": 4.440473794937134
+    },
+    {
+      "response": " \n1. patty 2.",
+      "elapsed_s": 5.018737316131592
+    },
+    {
+      "response": " \n1. tow 2. copying",
+      "elapsed_s": 4.438480615615845
+    },
+    {
+      "response": " \n\n1. possible 2. sl",
+      "elapsed_s": 5.22754430770874
+    },
+    {
+      "response": " \n\n1. mechanic 2. real",
+      "elapsed_s": 4.930567741394043
+    }
+  ],
+  "sparse": [
+    {
+      "response": " \n1. attempt 2. position",
+      "elapsed_s": 29.262187004089355
+    },
+    {
+      "response": " \n1. chalice 2.",
+      "elapsed_s": 28.48071575164795
+    },
+    {
+      "response": " \n\n1. atom 2. willing",
+      "elapsed_s": 27.671268939971924
+    },
+    {
+      "response": " \n1. rough 2. system",
+      "elapsed_s": 28.15449619293213
+    },
+    {
+      "response": " \n1. gopher 2.",
+      "elapsed_s": 28.284136295318604
+    },
+    {
+      "response": " \n1. word 2. official",
+      "elapsed_s": 27.626737117767334
+    },
+    {
+      "response": " \n\n1. welfare 2. grass",
+      "elapsed_s": 28.217909336090088
+    },
+    {
+      "response": " \n1. position 2. psychology",
+      "elapsed_s": 29.534510612487793
+    },
+    {
+      "response": " \n1. everyone 2. dis",
+      "elapsed_s": 28.35358166694641
+    },
+    {
+      "response": " \n1. floor 2. search",
+      "elapsed_s": 30.87357258796692
+    },
+    {
+      "response": " \n1. nit 2. cob",
+      "elapsed_s": 27.154146194458008
+    },
+    {
+      "response": " \n1. cardigan 2.",
+      "elapsed_s": 29.239748001098633
+    },
+    {
+      "response": " \n\n1. fiddle (34 times",
+      "elapsed_s": 28.14183735847473
+    },
+    {
+      "response": " \n\n1. hash 2. tight",
+      "elapsed_s": 29.806005001068115
+    },
+    {
+      "response": " \n1. windscreen 2.",
+      "elapsed_s": 26.03654670715332
+    },
+    {
+      "response": " \n\n1. teapot 2.",
+      "elapsed_s": 27.313601970672607
+    },
+    {
+      "response": " \n1. everyone 2. re",
+      "elapsed_s": 29.583475351333618
+    },
+    {
+      "response": " \n1. layer 2. layer",
+      "elapsed_s": 30.61029601097107
+    },
+    {
+      "response": " \n1. object 2. include",
+      "elapsed_s": 28.007100343704224
+    },
+    {
+      "response": " \n1. consideration 2. e",
+      "elapsed_s": 27.87601375579834
+    },
+    {
+      "response": " \n1. arthur 2.",
+      "elapsed_s": 28.78377056121826
+    },
+    {
+      "response": " \n1. come 2. come",
+      "elapsed_s": 28.312492609024048
+    },
+    {
+      "response": " \n1. pinto 2.",
+      "elapsed_s": 30.64620304107666
+    },
+    {
+      "response": " \n\n1. fact 2. diam",
+      "elapsed_s": 27.56607985496521
+    },
+    {
+      "response": " \n1. mile 2. g",
+      "elapsed_s": 27.985708951950073
+    },
+    {
+      "response": " \n\n1. silver 2. woodland",
+      "elapsed_s": 28.100969791412354
+    },
+    {
+      "response": " \n1. knee 2. m",
+      "elapsed_s": 29.165184259414673
+    },
+    {
+      "response": " \n\n1. phase 2. sport",
+      "elapsed_s": 27.810790300369263
+    },
+    {
+      "response": " \n1. numerous 2. reliability",
+      "elapsed_s": 28.328123092651367
+    },
+    {
+      "response": " \n\n1. boot 2. chicken",
+      "elapsed_s": 28.296964406967163
+    },
+    {
+      "response": " \n1. intention 2. tr",
+      "elapsed_s": 25.40405583381653
+    },
+    {
+      "response": " \n1. relative 2. west",
+      "elapsed_s": 27.74430751800537
+    },
+    {
+      "response": " \n1. set 2. discourse",
+      "elapsed_s": 28.153701543807983
+    },
+    {
+      "response": " \n1. clerk 2. help",
+      "elapsed_s": 28.503081560134888
+    },
+    {
+      "response": " \n1. route 2. wall",
+      "elapsed_s": 28.045036554336548
+    },
+    {
+      "response": " \n\n1. beer 2. album",
+      "elapsed_s": 27.492757558822632
+    },
+    {
+      "response": " \n1. patty 2.",
+      "elapsed_s": 28.09669780731201
+    },
+    {
+      "response": " \n1. tow 2. outcome",
+      "elapsed_s": 29.44435405731201
+    },
+    {
+      "response": " \n\n1. possible 2. phosphate",
+      "elapsed_s": 26.16945219039917
+    },
+    {
+      "response": " \n\n1. real 2. mechanic",
+      "elapsed_s": 28.14921236038208
+    }
+  ]
+}
