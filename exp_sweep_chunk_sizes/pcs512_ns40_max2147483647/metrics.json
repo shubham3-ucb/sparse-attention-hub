@@ -1,13 +1,13 @@
 {
   "task_scores": {
-    "hotpotqa": 18.89
+    "hotpotqa": 22.12
   },
-  "standard_overall_score": 18.89,
-  "overall_score": 18.89,
+  "standard_overall_score": 22.12,
+  "overall_score": 22.12,
   "summary": {
     "total_tasks": 1,
     "standard_tasks": 1,
     "extended_tasks": 0,
-    "total_samples": 6
+    "total_samples": 78
   }
 }

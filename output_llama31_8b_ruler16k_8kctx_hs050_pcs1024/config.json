@@ -1,0 +1,12 @@
+{
+  "model_name": "meta-llama/Llama-3.1-8B-Instruct",
+  "generation_kwargs": {
+    "max_new_tokens": 30
+  },
+  "request_kwargs": {
+    "max_context_length": 2147483647
+  },
+  "ruler_tasks": [
+    "vt"
+  ]
+}

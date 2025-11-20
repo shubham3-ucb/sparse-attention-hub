@@ -1,0 +1,62 @@
+{
+  "dense": [
+    {
+      "response": "",
+      "elapsed_s": 4.931026458740234
+    },
+    {
+      "response": "",
+      "elapsed_s": 4.2923264503479
+    },
+    {
+      "response": "",
+      "elapsed_s": 4.279720306396484
+    },
+    {
+      "response": "",
+      "elapsed_s": 4.298144340515137
+    },
+    {
+      "response": "",
+      "elapsed_s": 4.923006057739258
+    },
+    {
+      "response": "",
+      "elapsed_s": 4.275989055633545
+    },
+    {
+      "response": "",
+      "elapsed_s": 4.259496212005615
+    }
+  ],
+  "sparse": [
+    {
+      "response": " WIY, AYZ, DMBKK, NKGIC, and JPBBU.",
+      "elapsed_s": 2604.8153264522552
+    },
+    {
+      "response": " LTJ, JNJGN, XJKOF, DGYPK, and DIJVM.",
+      "elapsed_s": 2670.2726657390594
+    },
+    {
+      "response": " DQBDF, LBQYX, RANKA, SNHNS, LYEXN",
+      "elapsed_s": 2678.4736087322235
+    },
+    {
+      "response": " OBAEM, LUOWC, NBFWX, MBBYX, OAYIY",
+      "elapsed_s": 2764.603631258011
+    },
+    {
+      "response": " ITYKU, AHZMJ, QUSCE, SQTIC, KUS",
+      "elapsed_s": 2507.6762704849243
+    },
+    {
+      "response": " OZGNR, EGGDE, HHUJY, SMQLD, AKVJW",
+      "elapsed_s": 2844.8412957191467
+    },
+    {
+      "response": " PXC, GRE, POQ, QZI, UCC",
+      "elapsed_s": 2180.632752895355
+    }
+  ]
+}

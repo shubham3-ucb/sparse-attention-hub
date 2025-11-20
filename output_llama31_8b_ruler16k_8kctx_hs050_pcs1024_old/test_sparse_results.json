@@ -1,0 +1,134 @@
+{
+  "dense": [
+    {
+      "response": " ENGFW DMBKK NKGIC LJNVB JPBBU",
+      "elapsed_s": 7.151042938232422
+    },
+    {
+      "response": " JNJGN MCZMV XJKOF DGYPK DIJVM",
+      "elapsed_s": 4.641692876815796
+    },
+    {
+      "response": " DQBDF LBQYX RANKA SNHNS LYEXN",
+      "elapsed_s": 4.675967216491699
+    },
+    {
+      "response": " OBAEM LUOWC NBFWX MBBYX OAYIY",
+      "elapsed_s": 4.698593378067017
+    },
+    {
+      "response": " ITYKU AHZMJ YLRRC QUSCE SQTIC",
+      "elapsed_s": 4.642573118209839
+    },
+    {
+      "response": " OZGNR EGGDE HHUJY SMQLD AKVJW",
+      "elapsed_s": 4.7125420570373535
+    },
+    {
+      "response": " YFZET ASYFU VBWUR DHGEL JLPPN",
+      "elapsed_s": 4.67573881149292
+    },
+    {
+      "response": " FTORF JMRRD ZMHXC VSJIU NJCSL",
+      "elapsed_s": 4.63712477684021
+    },
+    {
+      "response": " APFPK SFTVB CWEIL GWNQP PPJVQ",
+      "elapsed_s": 4.613685846328735
+    },
+    {
+      "response": " HEVQW YMFJO QKMSL EOUFA FHUOU",
+      "elapsed_s": 4.686363935470581
+    },
+    {
+      "response": " JVLZU GVPJS QEDFF BJHOI SHGWZ",
+      "elapsed_s": 4.677587985992432
+    },
+    {
+      "response": " CNHYJ YIAUT TLRJB NFLFG VIPOM",
+      "elapsed_s": 4.587940454483032
+    },
+    {
+      "response": " GJXEK HSGRS AMDFR ASVZK DBJSC",
+      "elapsed_s": 4.686465740203857
+    },
+    {
+      "response": " CCTPJ ZIDHC OPPUR WRHNN THBXY",
+      "elapsed_s": 4.568519353866577
+    },
+    {
+      "response": " AFXYK HSTLK QNDCC XZEIP TQQIL",
+      "elapsed_s": 4.646752595901489
+    },
+    {
+      "response": " TWTDX ILNGZ QMNBW EEUXR CTAWA",
+      "elapsed_s": 4.660501956939697
+    }
+  ],
+  "sparse": [
+    {
+      "response": " ENGFW DMBKK NKGIC LJNVB JPBBU",
+      "elapsed_s": 2171.4948065280914
+    },
+    {
+      "response": " JNJGN MCZMV XJKOF DGYPK DIJVM",
+      "elapsed_s": 2254.2685437202454
+    },
+    {
+      "response": " DQBDF LBQYX RANKA SNHNS LYEXN",
+      "elapsed_s": 2338.4786648750305
+    },
+    {
+      "response": " OBAEM LUOWC NBFWX MBBYX OAYIY",
+      "elapsed_s": 2424.57452583313
+    },
+    {
+      "response": " ITYKU AHZMJ YLRRC QUSCE SQTIC",
+      "elapsed_s": 2241.334239244461
+    },
+    {
+      "response": " OZGNR EGGDE SMQLD AKVJW",
+      "elapsed_s": 2201.2374436855316
+    },
+    {
+      "response": " YFZET ASYFU VBWUR JLPPN",
+      "elapsed_s": 2094.910636663437
+    },
+    {
+      "response": " FTORF JMRRD ZMHXC NJCSL",
+      "elapsed_s": 2028.1888856887817
+    },
+    {
+      "response": " APFPK SFTVB CWEIL GWNQP PPJVQ",
+      "elapsed_s": 2414.748407125473
+    },
+    {
+      "response": " HEVQW YMFJO QKMSL EOUFA FHUOU",
+      "elapsed_s": 2489.859982252121
+    },
+    {
+      "response": " JVLZU GVPJS QEDFF BJHOI SHGWZ",
+      "elapsed_s": 2352.8382444381714
+    },
+    {
+      "response": " CNHYJ YIAUT TLRJB NFLFG VIPOM",
+      "elapsed_s": 2076.2506878376007
+    },
+    {
+      "response": " GJXEK HSGRS AMDFR ASVZK DBJSC",
+      "elapsed_s": 2416.1978421211243
+    },
+    {
+      "response": " CCTPJ ZIDHC OPPUR WRHNN THBXY",
+      "elapsed_s": 2004.2746412754059
+    },
+    {
+      "response": " AFXYK HSTLK QNDCC XZEIP TQQIL",
+      "elapsed_s": 2239.8954813480377
+    },
+    {
+      "response": " TWTDX ILNGZ QMNBW",
+      "elapsed_s": 1841.028529882431
+    }
+  ]
+}

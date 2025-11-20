@@ -1,21 +1,21 @@
 {
   "dense": {
     "n": 40,
-    "mean_elapsed_s": 4.731406426429748
+    "mean_elapsed_s": 4.871343433856964
   },
   "sparse": {
     "n": 40,
-    "mean_elapsed_s": 28.310670751333237
+    "mean_elapsed_s": 29.062419712543488
   },
   "metrics": {
-    "overall_score": 14.75,
+    "overall_score": 98.25,
     "task_scores": {
-      "cwe": {
-        "string_match": 14.75
+      "vt": {
+        "string_match": 98.25
       }
     },
     "context_length_scores": {
-      "16384": 14.75
+      "16384": 98.25
     },
     "summary": {
       "total_tasks": 1,

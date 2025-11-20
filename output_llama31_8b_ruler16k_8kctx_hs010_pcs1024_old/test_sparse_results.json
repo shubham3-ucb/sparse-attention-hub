@@ -1,0 +1,166 @@
+{
+  "dense": [
+    {
+      "response": " ENGFW DMBKK NKGIC LJNVB JPBBU",
+      "elapsed_s": 5.658843517303467
+    },
+    {
+      "response": " JNJGN MCZMV XJKOF DGYPK DIJVM",
+      "elapsed_s": 5.907758474349976
+    },
+    {
+      "response": " DQBDF LBQYX RANKA SNHNS LYEXN",
+      "elapsed_s": 4.674867153167725
+    },
+    {
+      "response": " OBAEM LUOWC NBFWX MBBYX OAYIY",
+      "elapsed_s": 4.7056684494018555
+    },
+    {
+      "response": " ITYKU AHZMJ YLRRC QUSCE SQTIC",
+      "elapsed_s": 4.654417514801025
+    },
+    {
+      "response": " OZGNR EGGDE HHUJY SMQLD AKVJW",
+      "elapsed_s": 5.355576992034912
+    },
+    {
+      "response": " YFZET ASYFU VBWUR DHGEL JLPPN",
+      "elapsed_s": 4.6631760597229
+    },
+    {
+      "response": " FTORF JMRRD ZMHXC VSJIU NJCSL",
+      "elapsed_s": 4.669996500015259
+    },
+    {
+      "response": " APFPK SFTVB CWEIL GWNQP PPJVQ",
+      "elapsed_s": 4.635179758071899
+    },
+    {
+      "response": " HEVQW YMFJO QKMSL EOUFA FHUOU",
+      "elapsed_s": 4.705930709838867
+    },
+    {
+      "response": " JVLZU GVPJS QEDFF BJHOI SHGWZ",
+      "elapsed_s": 4.699514865875244
+    },
+    {
+      "response": " CNHYJ YIAUT TLRJB NFLFG VIPOM",
+      "elapsed_s": 4.854645729064941
+    },
+    {
+      "response": " GJXEK HSGRS AMDFR ASVZK DBJSC",
+      "elapsed_s": 4.702629089355469
+    },
+    {
+      "response": " CCTPJ ZIDHC OPPUR WRHNN THBXY",
+      "elapsed_s": 4.5719358921051025
+    },
+    {
+      "response": " AFXYK HSTLK QNDCC XZEIP TQQIL",
+      "elapsed_s": 6.238604545593262
+    },
+    {
+      "response": " TWTDX ILNGZ QMNBW EEUXR CTAWA",
+      "elapsed_s": 4.688824415206909
+    },
+    {
+      "response": " FNBKW WUICL JHUTG JZZUT OUDYA",
+      "elapsed_s": 6.433548450469971
+    },
+    {
+      "response": " SJZCC DVBOL ZGGIU STIHB FUPEE",
+      "elapsed_s": 5.7597339153289795
+    },
+    {
+      "response": " KBHVE YWOOC CUDBU FFKRY CPXBZ",
+      "elapsed_s": 4.646535396575928
+    },
+    {
+      "response": " QQMWM CJKQU GZOAJ SMUIO IHAPA",
+      "elapsed_s": 4.62926983833313
+    }
+  ],
+  "sparse": [
+    {
+      "response": " ENGFW DMBKK NKGIC LJNVB JPBBU",
+      "elapsed_s": 1720.3661880493164
+    },
+    {
+      "response": " JNJGN MCZMV XJKOF DGYPK DIJVM",
+      "elapsed_s": 1788.4227812290192
+    },
+    {
+      "response": " DQBDF LBQYX RANKA SNHNS LYEXN",
+      "elapsed_s": 1843.41774892807
+    },
+    {
+      "response": " OBAEM LUOWC NBFWX MBBYX OAYIY",
+      "elapsed_s": 1904.6099815368652
+    },
+    {
+      "response": " ITYKU AHZMJ YLRRC QUSCE",
+      "elapsed_s": 1610.6022505760193
+    },
+    {
+      "response": " OZGNR EGGDE SMQLD AKVJW",
+      "elapsed_s": 1713.8508529663086
+    },
+    {
+      "response": " YFZET ASYFU VBWUR JLPPN",
+      "elapsed_s": 1683.3551387786865
+    },
+    {
+      "response": " FTORF JMRRD ZMHXC NJCSL",
+      "elapsed_s": 1580.3245406150818
+    },
+    {
+      "response": " APFPK SFTVB CWEIL GWNQP PPJVQ",
+      "elapsed_s": 1718.6826119422913
+    },
+    {
+      "response": " HEVQW YMFJO QKMSL EOUFA FHUOU",
+      "elapsed_s": 1913.7313408851624
+    },
+    {
+      "response": " JVLZU GVPJS QEDFF BJHOI SHGWZ",
+      "elapsed_s": 2147.086938858032
+    },
+    {
+      "response": " CNHYJ YIAUT TLRJB NFLFG VIPOM",
+      "elapsed_s": 1659.7166607379913
+    },
+    {
+      "response": " GJXEK HSGRS AMDFR ASVZK DBJSC",
+      "elapsed_s": 2196.858153820038
+    },
+    {
+      "response": " CCTPJ ZIDHC OPPUR WRHNN THBXY",
+      "elapsed_s": 1600.3917756080627
+    },
+    {
+      "response": " AFXYK HSTLK QNDCC TQQIL",
+      "elapsed_s": 1592.3269517421722
+    },
+    {
+      "response": " TWTDX ILNGZ QMNBW",
+      "elapsed_s": 1479.4472033977509
+    },
+    {
+      "response": " FNBKW WUICL JHUTG JZZUT OUDYA",
+      "elapsed_s": 1907.0474519729614
+    },
+    {
+      "response": " SJZCC DVBOL ZGGIU STIHB FUPE",
+      "elapsed_s": 1722.9037482738495
+    },
+    {
+      "response": " KBHVE YWOOC CUDBU FFKRY CPXBZ",
+      "elapsed_s": 1771.723359823227
+    },
+    {
+      "response": " QQMWM CJKQU GZOAJ SMUIO IHAPA",
+      "elapsed_s": 1711.5248036384583
+    }
+  ]
+}

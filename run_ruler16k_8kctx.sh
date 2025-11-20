@@ -19,7 +19,7 @@ CAP_B_MAX="8192"  # Repositioning cap (DEFAULT_MAX_POSITION_ID in mask_attention
 ENABLE_POSITION_REASSIGNMENT=1
 COMPARE_MASK_ROPED_VS_UNROPED=1
 EXTEND_CONTEXT=1
-SPARSE_DEBUG=1
+SPARSE_DEBUG=0
 
 # Output directory - match pattern: output_llama31_8b_ruler16k_8kctx_hs050_pcs1024
 model_short=$(echo "${MODEL_NAME}" | sed 's|meta-llama/||' | sed 's|Meta-||' | tr '[:upper:]' '[:lower:]' | sed 's|llama-3.1-8b-instruct|llama31_8b|' | sed 's|llama-3.2-1b-instruct|llama32_1b|')
@@ -53,7 +53,7 @@ echo "[INFO] PREFILL_CHUNK_SIZE: ${PREFILL_CHUNK_SIZE}"
 echo "[INFO] RULER_TASKS: ${RULER_TASKS:-all 13 tasks}"
 echo "[INFO] CAP_B_MAX (repositioning cap): ${CAP_B_MAX}"
 echo "[INFO] MAX_CONTEXT_LENGTH (model max): ${MAX_CONTEXT_LENGTH}"
-echo "[INFO] Settings: ENABLE_POSITION_REASSIGNMENT=1, EXTEND_CONTEXT=1, SPARSE_DEBUG=1"
+echo "[INFO] Settings: ENABLE_POSITION_REASSIGNMENT=1, EXTEND_CONTEXT=1, SPARSE_DEBUG=0"
 echo "[INFO] ================================================="
 
 # Validate NUM_SAMPLES
@@ -110,7 +110,7 @@ cat > "${OUTDIR}/settings.json" <<EOF
 EOF
 
 # Save command
-RUN_CMD="OUT=\"${OUTDIR}\" MODEL_NAME=\"${MODEL_NAME}\" PREFILL_CHUNK_SIZE=${PREFILL_CHUNK_SIZE} EXTEND_CONTEXT=${EXTEND_CONTEXT} ENABLE_POSITION_REASSIGNMENT=${ENABLE_POSITION_REASSIGNMENT} COMPARE_MASK_ROPED_VS_UNROPED=${COMPARE_MASK_ROPED_VS_UNROPED} SPARSE_DEBUG=${SPARSE_DEBUG} MAX_CONTEXT_LENGTH=${MAX_CONTEXT_LENGTH} OUTPUT_DIR=\"${OUTDIR}\" SPARSE_LOG_PATH=\"${OUTDIR}/hf_prefill.log\" ORACLE_TOPK_HEAVY_SIZE=${ORACLE_TOPK_HEAVY_SIZE} NUM_SAMPLES=${NUM_SAMPLES} RULER_TASKS=\"${RULER_TASKS}\" python test_sparse_oracle_ruler16k.py > \"${OUTDIR}/log.txt\" 2>&1"
+RUN_CMD="OUT=\"${OUTDIR}\" MODEL_NAME=\"${MODEL_NAME}\" PREFILL_CHUNK_SIZE=${PREFILL_CHUNK_SIZE} EXTEND_CONTEXT=${EXTEND_CONTEXT} ENABLE_POSITION_REASSIGNMENT=${ENABLE_POSITION_REASSIGNMENT} COMPARE_MASK_ROPED_VS_UNROPED=${COMPARE_MASK_ROPED_VS_UNROPED} SPARSE_DEBUG=${SPARSE_DEBUG} MAX_CONTEXT_LENGTH=${MAX_CONTEXT_LENGTH} OUTPUT_DIR=\"${OUTDIR}\" SPARSE_LOG_PATH=\"${OUTDIR}/hf_prefill.log\" ORACLE_TOPK_HEAVY_SIZE=${ORACLE_TOPK_HEAVY_SIZE} NUM_SAMPLES=${NUM_SAMPLES} RULER_TASKS=\"${RULER_TASKS}\" python test_sparse_oracle_ruler16k.py > /dev/null 2>&1"
 echo "${RUN_CMD}" > "${OUTDIR}/command.txt"
 {
   echo "#!/usr/bin/env bash"
@@ -136,7 +136,7 @@ SPARSE_LOG_PATH="${OUTDIR}/hf_prefill.log" \
 ORACLE_TOPK_HEAVY_SIZE="${ORACLE_TOPK_HEAVY_SIZE}" \
 NUM_SAMPLES="${NUM_SAMPLES}" \
 RULER_TASKS="${RULER_TASKS}" \
-python test_sparse_oracle_ruler16k.py > "${OUTDIR}/log.txt" 2>&1
+python test_sparse_oracle_ruler16k.py > /dev/null 2>&1
 
 exit_code=$?
 
@@ -175,7 +175,7 @@ if [ ${exit_code} -eq 0 ]; then
   echo "[INFO] Note: Repositioning is capped at ${CAP_B_MAX} (DEFAULT_MAX_POSITION_ID)"
 else
   echo "[FATAL] Process exited with non-zero status (${exit_code})"
-  echo "[INFO] Check logs: ${OUTDIR}/log.txt"
+  echo "[INFO] Check logs: ${OUTDIR}/hf_prefill.log (log.txt disabled to reduce buffering)"
   exit ${exit_code}
 fi
 

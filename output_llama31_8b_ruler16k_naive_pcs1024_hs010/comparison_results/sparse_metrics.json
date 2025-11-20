@@ -1,12 +1,12 @@
 {
-  "overall_score": 15.0,
+  "overall_score": 97.5,
   "task_scores": {
-    "cwe": {
-      "string_match": 15.0
+    "vt": {
+      "string_match": 97.5
     }
   },
   "context_length_scores": {
-    "16384": 15.0
+    "16384": 97.5
   },
   "summary": {
     "total_tasks": 1,

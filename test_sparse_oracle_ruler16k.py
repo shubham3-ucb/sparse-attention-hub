@@ -56,11 +56,46 @@ from sparse_attention_hub.sparse_attention.research_attention.maskers.fixed.impl
 from sparse_attention_hub.metric_logging.logger import MicroMetricLogger
 from benchmark.benchmark_registry import create_benchmark_instance
 
+# RULER 16k task-specific max_new_tokens requirements
+# Source: https://github.com/hsiehjackson/RULER/blob/main/scripts/data/synthetic/constants.py
+RULER_MAX_NEW_TOKENS = {
+    "niah": 128,  # For all niah_* tasks
+    "vt": 30,
+    "cwe": 120,
+    "fwe": 50,
+    "qa": 32,  # For qa_1, qa_2
+}
+
+
+def get_max_new_tokens_for_tasks(tasks: List[str]) -> int:
+    """Determine max_new_tokens based on RULER tasks.
+    
+    Args:
+        tasks: List of RULER task names (e.g., ["vt", "qa_1", "niah_single_1"])
+    
+    Returns:
+        Maximum required max_new_tokens across all tasks
+    """
+    max_tokens = 8  # Minimum default
+    for task in tasks:
+        # Map task to its category
+        if task.startswith("niah"):
+            task_category = "niah"
+        elif task.startswith("qa"):
+            task_category = "qa"
+        else:
+            task_category = task  # vt, cwe, fwe
+        
+        if task_category in RULER_MAX_NEW_TOKENS:
+            max_tokens = max(max_tokens, RULER_MAX_NEW_TOKENS[task_category])
+    
+    return max_tokens
+
 
 def run_example(
     model_name: str = "meta-llama/Llama-3.2-1B-Instruct",
     max_context_length: Optional[int] = None,
-    max_new_tokens: int = 8,
+    max_new_tokens: Optional[int] = None,  # If None, will be determined from tasks
     num_samples: int = 1,
     ruler_tasks: Optional[List[str]] = None,
 ) -> None:
@@ -69,9 +104,11 @@ def run_example(
     Args:
         model_name: HuggingFace model identifier
         max_context_length: Optional maximum context length to truncate to
-        max_new_tokens: Maximum number of tokens to generate
-        num_samples: Number of samples to process (per task if multiple tasks)
-        ruler_tasks: List of RULER task subsets to load (default: all 13 tasks)
+        max_new_tokens: Maximum number of tokens to generate. If None, will be
+            auto-determined from ruler_tasks based on RULER requirements:
+            vt=30, cwe=120, fwe=50, qa=32, niah=128
+        num_samples: Number of samples to process (total across all tasks)
+        ruler_tasks: List of RULER task subsets to load (default: ["vt"])
 
     Outputs are written to ``./output_test_sparse/``.
     """
@@ -105,17 +142,25 @@ def run_example(
     ]
     
     if ruler_tasks is None:
-        # Get from env var or use all tasks
+        # Get from env var or use only "vt" task by default
         tasks_env = os.environ.get("RULER_TASKS", "")
         if tasks_env:
             ruler_tasks = [t.strip() for t in tasks_env.split(",") if t.strip()]
         else:
-            ruler_tasks = all_ruler_tasks
+            # Default to only "vt" task for all RULER experiments
+            ruler_tasks = ["vt"]
     
     # Validate tasks
     invalid_tasks = [t for t in ruler_tasks if t not in all_ruler_tasks]
     if invalid_tasks:
         raise ValueError(f"Invalid RULER tasks: {invalid_tasks}. Valid tasks: {all_ruler_tasks}")
+    
+    # Determine max_new_tokens from tasks if not explicitly provided
+    if max_new_tokens is None:
+        max_new_tokens = get_max_new_tokens_for_tasks(ruler_tasks)
+        print(f"[RULER 16k] Auto-determined max_new_tokens={max_new_tokens} for tasks: {ruler_tasks}")
+    else:
+        print(f"[RULER 16k] Using provided max_new_tokens={max_new_tokens}")
     
     print(f"[RULER 16k] Loading tasks: {ruler_tasks}")
     
