@@ -27,6 +27,30 @@
     {
       "response": "",
       "elapsed_s": 4.259496212005615
+    },
+    {
+      "response": "",
+      "elapsed_s": 4.792677640914917
+    },
+    {
+      "response": "",
+      "elapsed_s": 4.282751560211182
+    },
+    {
+      "response": "",
+      "elapsed_s": 4.294990301132202
+    },
+    {
+      "response": "",
+      "elapsed_s": 6.094864368438721
+    },
+    {
+      "response": "",
+      "elapsed_s": 4.279200315475464
+    },
+    {
+      "response": "",
+      "elapsed_s": 4.279436349868774
     }
   ],
   "sparse": [
@@ -57,6 +81,30 @@
     {
       "response": " PXC, GRE, POQ, QZI, UCC",
       "elapsed_s": 2180.632752895355
+    },
+    {
+      "response": " WQR, EZG, EEO, YGK, and VSJIU.",
+      "elapsed_s": 2529.6224081516266
+    },
+    {
+      "response": " IGD, JDK, POK, APFPK, SFTVB",
+      "elapsed_s": 2280.5266337394714
+    },
+    {
+      "response": " CUV, JVB, SOZ, YMFJO, FHUOU",
+      "elapsed_s": 2333.1876673698425
+    },
+    {
+      "response": " JVLZU, GVPJS, BJHOI, SHGWZ, QEDFF",
+      "elapsed_s": 2672.9552257061005
+    },
+    {
+      "response": " CNHYJ, YIAUT, TLRJB, NFLFG, VIPOM",
+      "elapsed_s": 2437.138650894165
+    },
+    {
+      "response": " UTD, ZDN, AQL, SQD, KRW, GJXEK",
+      "elapsed_s": 2586.2485439777374
     }
   ]
 }

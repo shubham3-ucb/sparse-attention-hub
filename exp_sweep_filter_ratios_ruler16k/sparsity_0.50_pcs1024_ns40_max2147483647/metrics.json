@@ -1,16 +1,16 @@
 {
-  "overall_score": 37.14,
+  "overall_score": 32.31,
   "task_scores": {
     "vt": {
-      "string_match": 37.14
+      "string_match": 32.31
     }
   },
   "context_length_scores": {
-    "16384": 37.14
+    "16384": 32.31
   },
   "summary": {
     "total_tasks": 1,
-    "total_samples": 14,
+    "total_samples": 26,
     "context_lengths": [
       "16384"
     ]
