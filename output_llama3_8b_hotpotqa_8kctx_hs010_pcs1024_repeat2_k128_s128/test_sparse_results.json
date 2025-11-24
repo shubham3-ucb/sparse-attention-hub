@@ -1,0 +1,22 @@
+{
+  "dense": [
+    {
+      "response": " the 1 of the 2 the 2 the 2 \"the 2 the 1 the 1 and the 1 and the 1 \"the \"the 1, the \"the \"the \"the \"the \"the \"the \"",
+      "elapsed_s": 10.944693803787231
+    },
+    {
+      "response": " and, in, in in, in the in in  in  in    in the  in  and to the to to to to to to to to to and to the and to to  to to to to to to the not in the",
+      "elapsed_s": 12.938594341278076
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Gates v. Collier",
+      "elapsed_s": 106.04802012443542
+    },
+    {
+      "response": " Jules Verne",
+      "elapsed_s": 187.16483807563782
+    }
+  ]
+}

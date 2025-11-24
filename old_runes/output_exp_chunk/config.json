@@ -1,7 +1,0 @@
-{
-  "model_name": "meta-llama/Llama-3.2-1B-Instruct",
-  "generation_kwargs": {
-    "max_new_tokens": 32
-  },
-  "request_kwargs": {}
-}

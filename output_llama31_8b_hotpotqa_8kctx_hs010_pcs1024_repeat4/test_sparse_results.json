@@ -1,0 +1,46 @@
+{
+  "dense": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 19.953831911087036
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 36.311604022979736
+    },
+    {
+      "response": " Lowell, Michigan",
+      "elapsed_s": 35.18638348579407
+    },
+    {
+      "response": " The Sun",
+      "elapsed_s": 35.617790937423706
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 28.79594874382019
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Gates v. Collier",
+      "elapsed_s": 334.6038842201233
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 647.8702726364136
+    },
+    {
+      "response": " Norman",
+      "elapsed_s": 651.3155045509338
+    },
+    {
+      "response": " The Sun",
+      "elapsed_s": 672.0418908596039
+    },
+    {
+      "response": " The erotic thriller Chloe",
+      "elapsed_s": 525.1629908084869
+    }
+  ]
+}

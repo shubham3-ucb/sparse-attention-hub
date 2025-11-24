@@ -217,8 +217,10 @@ class ModelAdapterHF(ModelAdapter):
                             seq_lens = []
                             meta_keys_history = []
                             log_path = self._get_prefill_log_path()
+                            import time
                             for i in range(0, total_len, chunk_size):
                                 chunk = context_tokens[:, i : i + chunk_size]
+                                chunk_start_time: float = time.time()
                                 if os.environ.get("SPARSE_DEBUG"):
                                     print(f"[prefill] sparse chunk idx={i} chunk_shape={chunk.shape}", flush=True)
                                     try:
@@ -236,6 +238,14 @@ class ModelAdapterHF(ModelAdapter):
                                         use_cache=True,
                                         sparse_meta_data=sparse_meta_data,
                                     )
+                                    chunk_elapsed: float = time.time() - chunk_start_time
+                                    if os.environ.get("SPARSE_DEBUG"):
+                                        print(f"[prefill] sparse chunk idx={i} elapsed={chunk_elapsed:.3f}s", flush=True)
+                                        try:
+                                            with open(log_path, "a") as fh:
+                                                fh.write(f"[prefill] sparse chunk idx={i} elapsed={chunk_elapsed:.3f}s\n")
+                                        except Exception:
+                                            pass
                                 except Exception:
                                     chunked_outputs = self.model(
                                         chunk,
@@ -623,6 +633,18 @@ class ModelAdapterHF(ModelAdapter):
                     sin: torch.Tensor = position_embeddings[1]
                     kwargs["cos"] = cos
                     kwargs["sin"] = sin
+
+            # Two-band scaling: S (sink tokens) and K (tail freeze tokens)
+            # Read from environment variables, default to 0 (current working state)
+            # Override with env vars if they exist (env vars take precedence)
+            if "NUM_SINK_TOKENS" in os.environ:
+                kwargs["num_sink_tokens"] = int(os.environ.get("NUM_SINK_TOKENS", "0"))
+            else:
+                kwargs.setdefault("num_sink_tokens", 0)
+            if "PREFIX_FREEZE_TAIL_K" in os.environ:
+                kwargs["prefix_freeze_tail_k"] = int(os.environ.get("PREFIX_FREEZE_TAIL_K", "0"))
+            else:
+                kwargs.setdefault("prefix_freeze_tail_k", 0)
 
             return sparse_attention.custom_attention(
                 module=module,

@@ -1,0 +1,22 @@
+{
+  "dense": [
+    {
+      "response": " The\n Prison\n The\n Prison\n Prison\n Prison\n Prison the\n Prison the prison the prison the prison the following the\n The\n Prison in Prisoner and Prison the prison the\n The\n Prison the\n the\n The\n The\n The\n Prison",
+      "elapsed_s": 5.285897254943848
+    },
+    {
+      "response": " He was his \nT his \nT his to the \nHe was his \nHe was the \nHe was his \nthe \nthe \nthe \nthe \nthe 1\n The first \nthe \nthe \nT his \nthe \nthe \nthe \n",
+      "elapsed_s": 5.540288209915161
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Gates v. Collier",
+      "elapsed_s": 43.739548444747925
+    },
+    {
+      "response": " Charles L.",
+      "elapsed_s": 63.46761155128479
+    }
+  ]
+}

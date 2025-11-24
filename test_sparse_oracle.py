@@ -127,7 +127,8 @@ def run_example(
         except Exception:
             pass
 
-    generation_kwargs = {"max_new_tokens": max_new_tokens}
+    # Base generation_kwargs (will be updated per-sample if dataset provides max_new_tokens)
+    base_generation_kwargs = {"max_new_tokens": max_new_tokens}
     # request_kwargs controls truncation; leave empty for full-context unless a cap is provided
     request_kwargs = {}
     if os.environ.get("MAX_CONTEXT_LENGTH"):
@@ -151,7 +152,7 @@ def run_example(
         tokenizer_max = model_max = None
 
     print(f"model={model_name} device={device} tokenizer_max={tokenizer_max} model_max_pos={model_max}")
-    print(f"generation_kwargs={generation_kwargs} request_kwargs={request_kwargs}")
+    print(f"base generation_kwargs={base_generation_kwargs} request_kwargs={request_kwargs}")
 
     results = {"dense": [], "sparse": []}
     rows = []
@@ -161,6 +162,11 @@ def run_example(
     df_header = pd.DataFrame(columns=["context", "question", "predicted_answer", "elapsed_s", "answers", "task", "method", "all_classes"])
     df_header.to_csv(csv_path, index=False)
 
+    # Context repetition support
+    repeat_count = int(os.environ.get("REPEAT_COUNT", "1"))
+    if repeat_count > 1:
+        print(f"[INFO] Context repetition enabled: REPEAT_COUNT={repeat_count} (context will be repeated {repeat_count}x)")
+    
     for i, sample in enumerate(ds):
         print(f"\n{'='*80}")
         print(f"Processing sample {i+1}/{len(ds)}")
@@ -171,6 +177,26 @@ def run_example(
         if not context or not question:
             print(f"  ⚠️  Skipping sample {i+1}: missing context or question")
             continue
+        
+        # Read max_new_tokens from sample if available (dataset-specific), fallback to function parameter
+        sample_max_new_tokens = sample.get("max_new_tokens", None)
+        if sample_max_new_tokens is not None:
+            try:
+                sample_max_new_tokens = int(sample_max_new_tokens)
+                generation_kwargs = {"max_new_tokens": sample_max_new_tokens}
+                print(f"  Using dataset-specified max_new_tokens: {sample_max_new_tokens}")
+            except (ValueError, TypeError):
+                generation_kwargs = base_generation_kwargs.copy()
+                print(f"  Invalid max_new_tokens in sample, using default: {max_new_tokens}")
+        else:
+            generation_kwargs = base_generation_kwargs.copy()
+        
+        # Repeat context if REPEAT_COUNT > 1
+        if repeat_count > 1:
+            original_context = context
+            context = context * repeat_count
+            print(f"  Context repetition: {repeat_count}x (original: {len(original_context)} chars → repeated: {len(context)} chars)")
+        
         req = Request(context=context, questions=question, answer_prefix=sample.get("answer_prefix", "Answer: "))
 
         print(f"  Question: {question[:100]}{'...' if len(question) > 100 else ''}")

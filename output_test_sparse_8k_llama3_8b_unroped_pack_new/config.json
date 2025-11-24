@@ -1,9 +1,0 @@
-{
-  "model_name": "meta-llama/Meta-Llama-3-8B-Instruct",
-  "generation_kwargs": {
-    "max_new_tokens": 8
-  },
-  "request_kwargs": {
-    "max_context_length": 2147483647
-  }
-}

@@ -1,0 +1,46 @@
+{
+  "dense": [
+    {
+      "response": " the 1 of the 2 the",
+      "elapsed_s": 12.470925092697144
+    },
+    {
+      "response": " and, in, in in, in",
+      "elapsed_s": 16.13990807533264
+    },
+    {
+      "response": " in to in in in to to of",
+      "elapsed_s": 16.297235012054443
+    },
+    {
+      "response": " in in in in in  in ",
+      "elapsed_s": 16.311504125595093
+    },
+    {
+      "response": "\n\n (.. (. and",
+      "elapsed_s": 15.14545726776123
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Gates v.",
+      "elapsed_s": 241.41813611984253
+    },
+    {
+      "response": " Jules Verne",
+      "elapsed_s": 419.5230042934418
+    },
+    {
+      "response": " East Lansing",
+      "elapsed_s": 423.0657253265381
+    },
+    {
+      "response": " Jupiter",
+      "elapsed_s": 415.28570675849915
+    },
+    {
+      "response": " On film.",
+      "elapsed_s": 233.32998752593994
+    }
+  ]
+}

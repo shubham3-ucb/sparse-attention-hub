@@ -1,0 +1,46 @@
+{
+  "dense": [
+    {
+      "response": " the- the, the- the,",
+      "elapsed_s": 19.855990886688232
+    },
+    {
+      "response": " the.\n the. the. the.",
+      "elapsed_s": 35.578856468200684
+    },
+    {
+      "response": " the- the- the- the-",
+      "elapsed_s": 35.47189927101135
+    },
+    {
+      "response": " the. the. the. the.",
+      "elapsed_s": 35.46418738365173
+    },
+    {
+      "response": " ( ( ( and ( and. (",
+      "elapsed_s": 29.122620105743408
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v.",
+      "elapsed_s": 326.09037256240845
+    },
+    {
+      "response": " The actor that plays a role in the",
+      "elapsed_s": 656.4223935604095
+    },
+    {
+      "response": " East Lansing",
+      "elapsed_s": 652.0772862434387
+    },
+    {
+      "response": " The spacecraft was powered by a radiois",
+      "elapsed_s": 650.719393491745
+    },
+    {
+      "response": " On-screen",
+      "elapsed_s": 516.2013998031616
+    }
+  ]
+}

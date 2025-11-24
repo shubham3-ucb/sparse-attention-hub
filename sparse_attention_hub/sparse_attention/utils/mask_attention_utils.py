@@ -1,6 +1,7 @@
 """Utility functions for masked attention computation."""
 
 import os
+import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
@@ -552,6 +553,7 @@ def get_masked_attention_output(
     
     if (sparse_attention_mask.get_density() < 1.0) and (rotary_emb is not None and position_ids_q is not None) and enable_position_reassignment:
         # import pdb; pdb.set_trace()
+        reposition_start_time: float = time.time()
         try:
             # Compute cos/sin for queries
             # Current: Same position_ids for all heads (will be broadcasted in unapply_rotary_pos_emb_queries)
@@ -571,16 +573,6 @@ def get_masked_attention_output(
             # Verification: ensure unroped tensors are actually different from roped
             q_diff = torch.abs(queries - unroped_queries).max()
             k_diff = torch.abs(keys - unroped_keys).max()
-            debug = os.environ.get("SPARSE_DEBUG")
-            if debug:
-                # Keep simple verification - uncomment verbose details if needed
-                q_diff_val = q_diff.item()
-                k_diff_val = k_diff.item()
-                unroped_ok = q_diff_val > 1e-6 and k_diff_val > 1e-6
-                print(f"  [Unroped] {'✓' if unroped_ok else '✗'} q_diff={q_diff_val:.6f}, k_diff={k_diff_val:.6f}")
-                # Commented out verbose unroped details - uncomment if needed
-                # print(f"  [Unroped] queries.shape={unroped_queries.shape}, keys.shape={unroped_keys.shape}")
-                # print(f"  [Unroped Verification] q_diff.max()={q_diff_val:.6f}, k_diff.max()={k_diff_val:.6f} {'✓' if unroped_ok else '✗ FAILED'}")
             
             # Re-apply RoPE to unroped Q/K and verify we get same attention weights
             # Apply RoPE manually using the formula: x_rot = x * cos + rotate_half(x) * sin
@@ -789,6 +781,10 @@ def get_masked_attention_output(
             # Identify prefix vs current chunk boundary
             min_query_position: int = position_ids_q[0, 0].item()
             
+            # OPTIMIZATION: Pre-compute boundary_inclusive once (same for all heads)
+            # This is used in both two-band and proportional prefix scaling modes
+            boundary_inclusive: int = max(0, min_query_position - 1)
+            
             # Get dense mask to identify selected keys per head
             dense_mask = sparse_attention_mask.get_dense_mask()  # [batch, num_heads, seq_len_q, seq_len_k]
             assert dense_mask is not None, "[ERROR] dense_mask is None - cannot proceed with position reassignment"
@@ -834,70 +830,93 @@ def get_masked_attention_output(
             prefix_freeze_tail_k: int = int(kwargs.get("prefix_freeze_tail_k", 0))
             enforce_monotone_prefix: bool = bool(kwargs.get("monotone_prefix", True))
             
-            # import pdb; pdb.set_trace()
-            if debug:
-                # One-shot mode summary per layer
-                print(
-                    f"[Mode] two_band={use_two_band_prefix_scaling}, proportional={use_proportional_prefix_scaling}, "
-                    f"pack={pack_k_chunk_translation}, alpha={prefix_scale_alpha:.3f}, "
-                    f"S_default={num_sink_tokens}, K_default={prefix_freeze_tail_k}"
-                )
-                max_q_pos = position_ids_q[0, -1].item()
-                min_k_pos = position_ids_k_actual[0, 0].item()
-                max_k_pos = position_ids_k_actual[0, -1].item()
-                print(f"\n[Option 1: Gap Closure Repositioning]")
-                print(f"  Query positions: {min_query_position} to {max_q_pos} ({seq_len_q} tokens)")
-                print(f"  Key positions: {min_k_pos} to {max_k_pos} ({seq_len_k} tokens)")
-                print(f"  Prefix boundary: keys with position < {min_query_position} are prefix")
+            # Timing: per-head position reassignment
+            per_head_start_time: float = time.time()
+            
+            # OPTIMIZATION: Cache position_ids_k_actual[0] once (accessed 20+ times per head)
+            # This eliminates repeated tensor indexing operations
+            position_ids_k_actual_0: torch.Tensor = position_ids_k_actual[0]  # (seq_len_k,)
+
+            # OPTIMIZATION: Batch union computation for all heads at once (outside loop)
+            # Shape: dense_mask[0, :, :, :] is (num_heads, seq_len_q, seq_len_k)
+            # Use torch.any(dim=1) to get keys attended by ANY query per head: (num_heads, seq_len_k)
+            # This is functionally identical to computing union_mask per head inside the loop
+            union_masks_all_heads: torch.Tensor = torch.any(dense_mask[0, :, :, :] > 0, dim=1)  # (num_heads, seq_len_k)
+            
+            # OPTIMIZATION: Pre-compute all_current_chunk_mask once (same for all heads)
+            # This mask only depends on position_ids_k_actual_0 and min_query_position, not on head_idx
+            all_current_chunk_mask: torch.Tensor = position_ids_k_actual_0 >= min_query_position  # (seq_len_k,)
+            all_current_chunk_key_indices_tensor: torch.Tensor = torch.nonzero(all_current_chunk_mask).squeeze(-1)  # (num_current_chunk_keys,)
+            
+            # OPTIMIZATION: Pre-compute sorted current chunk keys once (same for all heads)
+            # Sorting is based on position_ids_k_actual_0, which doesn't depend on head_idx
+            num_current_chunk_keys: int = all_current_chunk_key_indices_tensor.numel()
+            if num_current_chunk_keys > 0:
+                current_chunk_positions_tensor: torch.Tensor = position_ids_k_actual_0[all_current_chunk_key_indices_tensor]  # (num_current_chunk_keys,)
+                sort_indices: torch.Tensor = torch.argsort(current_chunk_positions_tensor)  # GPU operation
+                all_current_chunk_key_indices_sorted_tensor: torch.Tensor = all_current_chunk_key_indices_tensor[sort_indices]  # GPU gather
+                current_chunk_original_pos_tensor: torch.Tensor = current_chunk_positions_tensor[sort_indices]  # Pre-sorted positions
+            else:
+                all_current_chunk_key_indices_sorted_tensor: Optional[torch.Tensor] = None
+                current_chunk_original_pos_tensor: Optional[torch.Tensor] = None
+            
+            # OPTIMIZATION: Pre-compute query_positions_tensor once (same for all heads)
+            # This is just position_ids_q[0, :] which doesn't depend on head_idx
+            query_positions_tensor: torch.Tensor = position_ids_q[0, :]  # (seq_len_q,)
 
             # Process each head independently
             for head_idx in range(num_heads):
                 # Per-head translation state for optional packing
                 pack_delta: Optional[int] = None
                 m_end_for_pack: Optional[int] = None
-                # Get union of selected key indices for this head (vectorized)
-                # Shape: dense_mask[0, head_idx, :, :] is (seq_len_q, seq_len_k)
-                # Use torch.any(dim=0) to get keys attended by ANY query: (seq_len_k,)
-                union_mask: torch.Tensor = torch.any(dense_mask[0, head_idx, :, :] > 0, dim=0)  # (seq_len_k,)
-                union_key_indices: set = set(torch.nonzero(union_mask).squeeze(-1).cpu().tolist())
+                # Get union of selected key indices for this head (pre-computed, batched)
+                # OPTIMIZATION: Index into pre-computed batched union masks (functionally identical to per-head computation)
+                union_mask: torch.Tensor = union_masks_all_heads[head_idx]  # (seq_len_k,)
+                # OPTIMIZATION: Keep indices on GPU instead of converting to Python set
+                union_key_indices_tensor: torch.Tensor = torch.nonzero(union_mask).squeeze(-1)  # (num_selected_keys,)
 
-
-                # Separate prefix vs current chunk key indices (optimized: batch extract positions)
-                if len(union_key_indices) > 0:
-                    union_key_indices_list: List[int] = list(union_key_indices)
+                # Separate prefix vs current chunk key indices (OPTIMIZED: vectorized GPU operations)
+                num_union_keys: int = union_key_indices_tensor.numel()
+                prefix_key_indices_tensor: Optional[torch.Tensor] = None
+                current_chunk_key_indices_tensor: Optional[torch.Tensor] = None
+                
+                if num_union_keys > 0:
                     # Batch extract all positions at once (single GPU operation)
-                    union_key_positions_tensor: torch.Tensor = position_ids_k_actual[0, union_key_indices_list]  # (len(union_key_indices),)
-                    union_key_positions_list: List[int] = union_key_positions_tensor.cpu().tolist()
+                    # OPTIMIZATION: Use cached tensor instead of repeated indexing
+                    union_key_positions_tensor: torch.Tensor = position_ids_k_actual_0[union_key_indices_tensor]  # (num_union_keys,)
                     
-                    prefix_key_indices: List[int] = []
-                    current_chunk_key_indices: List[int] = []
-                    for k_idx, k_pos in zip(union_key_indices_list, union_key_positions_list):
-                        if k_pos < min_query_position:
-                            prefix_key_indices.append(k_idx)
-                        else:
-                            current_chunk_key_indices.append(k_idx)
+                    # Vectorized separation using GPU boolean masks
+                    prefix_mask: torch.Tensor = union_key_positions_tensor < min_query_position  # (num_union_keys,)
+                    prefix_key_indices_tensor = union_key_indices_tensor[prefix_mask]  # (num_prefix_keys,)
+                    current_chunk_key_indices_tensor = union_key_indices_tensor[~prefix_mask]  # (num_current_chunk_keys,)
+                    
+                    # OPTIMIZATION: Keep tensors on GPU - no CPU-GPU transfers
+                    # prefix_key_indices_tensor and current_chunk_key_indices_tensor stay as tensors
                 else:
-                    prefix_key_indices: List[int] = []
-                    current_chunk_key_indices: List[int] = []
+                    # Empty case - set to None to indicate no keys
+                    prefix_key_indices_tensor = None
+                    current_chunk_key_indices_tensor = None
 
-                # Sort prefix keys by their original position IDs (optimized: use pre-extracted positions)
-                if len(prefix_key_indices) > 0:
-                    # Batch extract positions for prefix keys
-                    prefix_positions_tensor: torch.Tensor = position_ids_k_actual[0, prefix_key_indices]  # (len(prefix_key_indices),)
-                    prefix_positions_list: List[int] = prefix_positions_tensor.cpu().tolist()
-                    # Create tuples and sort
-                    prefix_key_positions: List[Tuple[int, int]] = list(zip(prefix_positions_list, prefix_key_indices))
-                    prefix_key_positions.sort()  # Sort by position (first element of tuple)
-                    prefix_key_indices_sorted: List[int] = [k_idx for _, k_idx in prefix_key_positions]
+                # Sort prefix keys by their original position IDs (OPTIMIZED: GPU-based sorting)
+                if prefix_key_indices_tensor is not None and prefix_key_indices_tensor.numel() > 0:
+                    # Already have tensor from vectorized separation above
+                    # OPTIMIZATION: Use cached tensor instead of repeated indexing
+                    prefix_positions_tensor: torch.Tensor = position_ids_k_actual_0[prefix_key_indices_tensor]  # (num_prefix_keys,)
                     
-                    # Find max position among selected prefix keys (already extracted)
-                    max_prefix_position: int = prefix_key_positions[-1][0]  # Last position after sorting
+                    # OPTIMIZATION: Use torch.argsort for GPU-based sorting (functionally identical to Python sort)
+                    sort_indices: torch.Tensor = torch.argsort(prefix_positions_tensor)  # GPU operation
+                    prefix_key_indices_sorted_tensor: torch.Tensor = prefix_key_indices_tensor[sort_indices]  # GPU gather
+                    # OPTIMIZATION: Keep as tensor - no CPU-GPU transfer
+                    
+                    # Find max position among selected prefix keys (using sorted positions tensor)
+                    sorted_positions_tensor: torch.Tensor = prefix_positions_tensor[sort_indices]
+                    max_prefix_position: int = int(sorted_positions_tensor[-1].item())  # Last position after sorting
                 else:
-                    prefix_key_indices_sorted: List[int] = []
+                    prefix_key_indices_sorted_tensor: Optional[torch.Tensor] = None
                     max_prefix_position: int = -1
                     
                 # Reassign prefix keys to contiguous positions [0, 1, 2, ...]
-                num_prefix_keys: int = len(prefix_key_indices_sorted)
+                num_prefix_keys: int = prefix_key_indices_sorted_tensor.numel() if prefix_key_indices_sorted_tensor is not None else 0
                 if num_prefix_keys > 0:
                     if use_two_band_prefix_scaling:
                         # ============================
@@ -907,8 +926,7 @@ def get_masked_attention_output(
                         # - Compress only the middle band proportionally
                         # ============================
                         S: int = max(0, min(num_sink_tokens, num_prefix_keys))
-                        # Compute boundary and T_pref once per head (depends on moving query position)
-                        boundary_inclusive: int = max(0, min_query_position - 1)
+                        # OPTIMIZATION: Reuse pre-computed boundary_inclusive (computed once outside loop, same for all heads)
                         # Enforce hard cap via alpha_eff so that max_new = T_pref + L_q <= B_max
                         # If boundary=0, alpha_eff=0; also ensure L_q <= B_max
                         assert seq_len_q <= (max_position_id_allowed + 1), (
@@ -921,13 +939,6 @@ def get_masked_attention_output(
                             alpha_eff = 0.0
                         T_pref_inclusive: int = int(alpha_eff * float(boundary_inclusive))
                         # Debug print for cap diagnostics
-                        if debug:
-                            max_new_est = T_pref_inclusive + seq_len_q
-                            print(
-                                f"    [Cap] B_max={max_position_id_allowed}, boundary={boundary_inclusive}, "
-                                f"L_q={seq_len_q}, alpha_user={prefix_scale_alpha:.6f}, alpha_eff={alpha_eff:.6f}, "
-                                f"T_pref={T_pref_inclusive}, max_new_est={max_new_est}"
-                            )
                         # Sanity: estimated max must fit cap
                         assert (T_pref_inclusive + seq_len_q) <= max_position_id_allowed, (
                             f"[FATAL] Estimated max_new={T_pref_inclusive + seq_len_q} exceeds cap {max_position_id_allowed}"
@@ -936,29 +947,37 @@ def get_masked_attention_output(
                         K_requested: int = max(0, min(prefix_freeze_tail_k, max(0, num_prefix_keys - S)))
                         K_cap_by_target: int = max(0, T_pref_inclusive - S)
                         K: int = max(0, min(K_requested, K_cap_by_target))
+                        # Debug logging for two-band parameters (only log once per layer, first head)
+                        if head_idx == 0 and os.environ.get("SPARSE_DEBUG_POSITIONS", "0").lower() in ("1", "true", "yes"):
+                            layer_idx_debug: Optional[int] = kwargs.get("layer_idx", None)
+                            layer_str: str = str(layer_idx_debug) if layer_idx_debug is not None else "?"
+                            print(f"[DEBUG TWO-BAND] layer={layer_str} num_sink_tokens={num_sink_tokens} prefix_freeze_tail_k={prefix_freeze_tail_k} → S={S} K={K} num_prefix_keys={num_prefix_keys} T_pref={T_pref_inclusive}", flush=True)
                         start_mid: int = S
                         end_mid_exclusive: int = max(S, num_prefix_keys - K)
                         # Prepare original positions for the whole selected prefix (sorted)
-                        prefix_positions_tensor_full: torch.Tensor = position_ids_k_actual[0, prefix_key_indices_sorted]
-                        if debug:
-                            print(
-                                f"    [TwoBand Scaling] S={S}, K={K} (req={K_requested}, cap_by_target={K_cap_by_target}), "
-                                f"alpha={prefix_scale_alpha:.3f}, boundary={boundary_inclusive}, T_pref={T_pref_inclusive}"
-                            )
+                        # OPTIMIZATION: Use tensor directly - no CPU-GPU transfer
+                        # OPTIMIZATION: Use cached tensor instead of repeated indexing
+                        prefix_positions_tensor_full: torch.Tensor = position_ids_k_actual_0[prefix_key_indices_sorted_tensor]
                         # Freeze sinks: first S elements
                         if S > 0:
-                            sink_indices: List[int] = prefix_key_indices_sorted[:S]
-                            sink_positions: torch.Tensor = position_ids_k_actual[0, sink_indices]
+                            # OPTIMIZATION: Use tensor slicing - no CPU-GPU transfer
+                            sink_indices: torch.Tensor = prefix_key_indices_sorted_tensor[:S]
+                            # OPTIMIZATION: Use cached tensor instead of repeated indexing
+                            sink_positions: torch.Tensor = position_ids_k_actual_0[sink_indices]
                             position_ids_k_per_head[0, head_idx, sink_indices] = sink_positions
                         # Freeze tail: last K elements
                         if K > 0:
-                            tail_indices: List[int] = prefix_key_indices_sorted[-K:]
-                            tail_positions: torch.Tensor = position_ids_k_actual[0, tail_indices]
+                            # OPTIMIZATION: Use tensor slicing - no CPU-GPU transfer
+                            tail_indices: torch.Tensor = prefix_key_indices_sorted_tensor[-K:]
+                            # OPTIMIZATION: Use cached tensor instead of repeated indexing
+                            tail_positions: torch.Tensor = position_ids_k_actual_0[tail_indices]
                             position_ids_k_per_head[0, head_idx, tail_indices] = tail_positions
                         # Middle band scaling
                         if end_mid_exclusive > start_mid:
-                            middle_indices_sorted: List[int] = prefix_key_indices_sorted[start_mid:end_mid_exclusive]
-                            middle_orig_positions: torch.Tensor = position_ids_k_actual[0, middle_indices_sorted]
+                            # OPTIMIZATION: Use tensor slicing - no CPU-GPU transfer
+                            middle_indices_sorted: torch.Tensor = prefix_key_indices_sorted_tensor[start_mid:end_mid_exclusive]
+                            # OPTIMIZATION: Use cached tensor instead of repeated indexing
+                            middle_orig_positions: torch.Tensor = position_ids_k_actual_0[middle_indices_sorted]
                             min_mid: int = int(middle_orig_positions.min().item())
                             max_mid: int = int(middle_orig_positions.max().item())
                             # Target band for middle: [S .. T_pref_inclusive - K]
@@ -984,43 +1003,12 @@ def get_masked_attention_output(
                                 )
                                 if enforce_monotone_prefix and middle_new_positions.numel() > 0:
                                     # Ensure non-decreasing sequence to avoid duplicates regression
-                                    running_max: int = int(middle_new_positions[0].item())
-                                    middle_new_positions_list: List[int] = middle_new_positions.cpu().tolist()
-                                    for idx in range(1, len(middle_new_positions_list)):
-                                        if middle_new_positions_list[idx] < running_max:
-                                            middle_new_positions_list[idx] = running_max
-                                        running_max = min(target_high_inclusive, max(running_max, middle_new_positions_list[idx]))
-                                    middle_new_positions = torch.tensor(
-                                        middle_new_positions_list, device=middle_new_positions.device, dtype=torch.long
-                                    )
+                                    # OPTIMIZATION: Use GPU-based cummax + clamp (functionally identical to Python loop)
+                                    cummax_values, _ = torch.cummax(middle_new_positions, dim=0)
+                                    middle_new_positions = torch.clamp(cummax_values, max=target_high_inclusive)
                                 # Assign middle band
                                 position_ids_k_per_head[0, head_idx, middle_indices_sorted] = middle_new_positions
-                                if debug:
-                                    print(
-                                        f"    [TwoBand Scaling] S={S}, K={K}, alpha={prefix_scale_alpha:.3f}, "
-                                        f"boundary={boundary_inclusive}, T_pref={T_pref_inclusive}, "
-                                        f"middle_in=[{min_mid},{max_mid}], target=[{target_low},{target_high_inclusive}], "
-                                        f"s_mid={s_mid:.6f}, n_middle={len(middle_indices_sorted)}"
-                                    )
-                                    # Show a small sample of middle remap to make the effect explicit
-                                    sample_sz: int = min(3, len(middle_indices_sorted))
-                                    if sample_sz > 0:
-                                        # Head (start) sample
-                                        sample_idxs_head: List[int] = middle_indices_sorted[:sample_sz]
-                                        sample_orig_head: torch.Tensor = position_ids_k_actual[0, sample_idxs_head]
-                                        sample_new_head: torch.Tensor = position_ids_k_per_head[0, head_idx, sample_idxs_head]
-                                        print(f"      Middle sample head orig={sample_orig_head.tolist()} -> new={sample_new_head.tolist()}")
-                                        # Tail (end) sample
-                                        sample_idxs_tail: List[int] = middle_indices_sorted[-sample_sz:]
-                                        sample_orig_tail: torch.Tensor = position_ids_k_actual[0, sample_idxs_tail]
-                                        sample_new_tail: torch.Tensor = position_ids_k_per_head[0, head_idx, sample_idxs_tail]
-                                        print(f"      Middle sample tail orig={sample_orig_tail.tolist()} -> new={sample_new_tail.tolist()}")
                             # (No else branch: invalid target is fatal above)
-                        else:
-                            if debug:
-                                print(
-                                    f"    [TwoBand Scaling] No middle band to scale (S={S}, K={K}, num_prefix={num_prefix_keys})"
-                                )
                         # Optional: translate-pack K+Chunk after middle band at m_end (always considered inside two-band branch)
                         if pack_k_chunk_translation:
                             # m_end is the end of the compressed middle band in target space
@@ -1029,21 +1017,14 @@ def get_masked_attention_output(
                             pack_delta = int((m_end_for_pack + K + 1) - min_query_position)
                             # Overwrite tail positions with translated originals (ensure overwrite even if set earlier)
                             if K > 0:
-                                tail_indices_re: List[int] = prefix_key_indices_sorted[-K:]
-                                tail_positions_orig: torch.Tensor = position_ids_k_actual[0, tail_indices_re]
+                                # OPTIMIZATION: Use tensor slicing - no CPU-GPU transfer
+                                tail_indices_re: torch.Tensor = prefix_key_indices_sorted_tensor[-K:]
+                                # OPTIMIZATION: Use cached tensor instead of repeated indexing
+                                tail_positions_orig: torch.Tensor = position_ids_k_actual_0[tail_indices_re]
                                 translated_tail: torch.Tensor = (tail_positions_orig + pack_delta).to(
                                     dtype=torch.long, device=position_ids_k_per_head.device
                                 )
                                 position_ids_k_per_head[0, head_idx, tail_indices_re] = translated_tail
-                            if debug:
-                                k_start_new: int = m_end_for_pack + 1
-                                k_end_new: int = m_end_for_pack + K
-                                chunk_start_new: int = m_end_for_pack + K + 1
-                                chunk_end_new: int = m_end_for_pack + K + seq_len_q
-                                print(
-                                    f"    [Pack K+Chunk] M_end={m_end_for_pack}, Δ={pack_delta}, "
-                                    f"K=[{k_start_new}..{k_end_new}], Chunk=[{chunk_start_new}..{chunk_end_new}]"
-                                )
                             # Hard cap verification post-pack (per head)
                             # Estimate maximum new positions via computed ranges
                             assert (m_end_for_pack + K + seq_len_q) <= max_position_id_allowed, (
@@ -1051,8 +1032,7 @@ def get_masked_attention_output(
                             )
                     elif use_proportional_prefix_scaling:
                         # Scale prefix into [0, target_prefix_max_inclusive] using ratio cap alpha.
-                        # Base boundary is pre-chunk span: [0 .. min_query_position-1]
-                        boundary_inclusive: int = max(0, min_query_position - 1)
+                        # OPTIMIZATION: Reuse pre-computed boundary_inclusive (computed once outside loop, same for all heads)
                         # Ratio-capped target inclusive bound; use epsilon=0 here to avoid a
                         # gratuitous -1 shift when the prefix already fits
                         target_prefix_max_inclusive: int = int(prefix_scale_alpha * float(boundary_inclusive))
@@ -1060,24 +1040,14 @@ def get_masked_attention_output(
                         target_prefix_max_inclusive = max(0, target_prefix_max_inclusive)
                         # Convert to exclusive bound for helper
                         target_prefix_max_exclusive: int = target_prefix_max_inclusive + 1
-                        prefix_positions_tensor: torch.Tensor = position_ids_k_actual[0, prefix_key_indices_sorted]
+                        # OPTIMIZATION: Use tensor directly - no CPU-GPU transfer
+                        # OPTIMIZATION: Use cached tensor instead of repeated indexing
+                        prefix_positions_tensor: torch.Tensor = position_ids_k_actual_0[prefix_key_indices_sorted_tensor]
                         new_prefix_positions: torch.Tensor = _scale_prefix_positions(
                             prefix_positions=prefix_positions_tensor,
                             target_max_exclusive=target_prefix_max_exclusive,
                             epsilon=0,
                         )
-                        if debug:
-                            # Print concise scaling diagnostics
-                            min_p = int(prefix_positions_tensor.min().item())
-                            max_p = int(prefix_positions_tensor.max().item())
-                            denom = max(1, max_p - min_p)
-                            s_raw = float(target_prefix_max_inclusive) / float(denom)
-                            print(
-                                f"    [Prefix Scaling] alpha={prefix_scale_alpha:.3f}, "
-                                f"boundary_inclusive={boundary_inclusive}, "
-                                f"target_prefix_max_inclusive={target_prefix_max_inclusive}, "
-                                f"min_prefix={min_p}, max_prefix={max_p}, denom={denom}, s_raw={s_raw:.6f}"
-                            )
                     else:
                         # Vectorized assignment: create tensor of new positions and assign all at once
                         new_prefix_positions: torch.Tensor = torch.arange(
@@ -1085,54 +1055,45 @@ def get_masked_attention_output(
                         )
                     # Only assign bulk new_prefix_positions for non two-band modes
                     if not use_two_band_prefix_scaling:
-                        position_ids_k_per_head[0, head_idx, prefix_key_indices_sorted] = new_prefix_positions
+                        # OPTIMIZATION: Use tensor indexing - no CPU-GPU transfer
+                        position_ids_k_per_head[0, head_idx, prefix_key_indices_sorted_tensor] = new_prefix_positions
 
                 # Get all current chunk keys (not just selected ones) - vectorized
-                all_current_chunk_mask: torch.Tensor = position_ids_k_actual[0] >= min_query_position  # (seq_len_k,)
-                all_current_chunk_key_indices: List[int] = torch.nonzero(all_current_chunk_mask).squeeze(-1).cpu().tolist()
-
-                # Sort current chunk keys by their original position IDs (optimized: batch extract)
-                if len(all_current_chunk_key_indices) > 0:
-                    # Batch extract positions
-                    current_chunk_positions_tensor: torch.Tensor = position_ids_k_actual[0, all_current_chunk_key_indices]  # (len(all_current_chunk_key_indices),)
-                    current_chunk_positions_list: List[int] = current_chunk_positions_tensor.cpu().tolist()
-                    # Create tuples and sort
-                    current_chunk_key_positions: List[Tuple[int, int]] = list(zip(current_chunk_positions_list, all_current_chunk_key_indices))
-                    current_chunk_key_positions.sort()  # Sort by position (first element of tuple)
-                    all_current_chunk_key_indices_sorted: List[int] = [k_idx for _, k_idx in current_chunk_key_positions]
-                else:
-                    all_current_chunk_key_indices_sorted: List[int] = []
+                # OPTIMIZATION: Reuse pre-computed all_current_chunk_key_indices_sorted_tensor (computed once outside loop)
+                # This is functionally identical - sorting is based on position_ids_k_actual_0, same for all heads
                 
-                ### CHANGE CHANGE CHANGE
                 # Start current chunk at max_prefix + 1 (or 0 if no prefix)
                 current_chunk_start: int = max_prefix_position + 1 if max_prefix_position >= 0 else 0
-                # current_chunk_start = num_prefix_keys
-                # num_prefix_keys
-                ### CHANGE CHANGE CHANGE
                 
                 # Assign current chunk key positions
-                if len(all_current_chunk_key_indices_sorted) > 0:
+                if all_current_chunk_key_indices_sorted_tensor is not None and all_current_chunk_key_indices_sorted_tensor.numel() > 0:
                     # Keep current chunk unchanged ONLY for pure proportional mode (not when two-band is active)
                     if use_proportional_prefix_scaling and not use_two_band_prefix_scaling:
                         # Keep current chunk positions UNCHANGED (copy original positions)
-                        original_current_chunk_positions: torch.Tensor = position_ids_k_actual[0, all_current_chunk_key_indices_sorted]
-                        position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted] = original_current_chunk_positions
+                        # OPTIMIZATION: Use tensor indexing - no CPU-GPU transfer
+                        # OPTIMIZATION: Use cached tensor instead of repeated indexing
+                        original_current_chunk_positions: torch.Tensor = position_ids_k_actual_0[all_current_chunk_key_indices_sorted_tensor]
+                        position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted_tensor] = original_current_chunk_positions
                     else:
                         if pack_k_chunk_translation and pack_delta is not None:
                             # Pure translation for current chunk keys: new = orig + Δ
-                            original_current_chunk_positions: torch.Tensor = position_ids_k_actual[0, all_current_chunk_key_indices_sorted]
+                            # OPTIMIZATION: Use tensor indexing - no CPU-GPU transfer
+                            # OPTIMIZATION: Use cached tensor instead of repeated indexing
+                            original_current_chunk_positions: torch.Tensor = position_ids_k_actual_0[all_current_chunk_key_indices_sorted_tensor]
                             translated_chunk: torch.Tensor = (original_current_chunk_positions + pack_delta).to(
                                 dtype=torch.long, device=position_ids_k_per_head.device
                             )
-                            position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted] = translated_chunk
+                            position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted_tensor] = translated_chunk
                         else:
                             # Default: contiguous placement after prefix
-                            num_current_chunk_keys: int = len(all_current_chunk_key_indices_sorted)
+                            # OPTIMIZATION: Use tensor numel - no CPU-GPU transfer
+                            num_current_chunk_keys: int = all_current_chunk_key_indices_sorted_tensor.numel()
                             new_current_chunk_positions: torch.Tensor = torch.arange(
                                 current_chunk_start, current_chunk_start + num_current_chunk_keys,
                                 device=position_ids_k_per_head.device, dtype=torch.long
                             )
-                            position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted] = new_current_chunk_positions
+                            # OPTIMIZATION: Use tensor indexing - no CPU-GPU transfer
+                            position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted_tensor] = new_current_chunk_positions
                 # Diagnostic prints (only if SPARSE_DEBUG enabled)
                 # Commented out verbose per-head details - uncomment if needed for debugging
                 # if debug:
@@ -1167,38 +1128,64 @@ def get_masked_attention_output(
                 #     
                 #     print(f"    Summary: Prefix max_original_pos={max_prefix_position}, Current chunk starts at {current_chunk_start}")
 
-                # Create position_id -> key_index mapping for queries (optimized: batch extract)
-                if len(all_current_chunk_key_indices_sorted) > 0:
-                    # Batch extract original positions and new positions
-                    current_chunk_original_pos_tensor: torch.Tensor = position_ids_k_actual[0, all_current_chunk_key_indices_sorted]  # (num_current_chunk_keys,)
-                    current_chunk_new_positions_tensor: torch.Tensor = position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted]  # (num_current_chunk_keys,)
-                    current_chunk_original_pos_list: List[int] = current_chunk_original_pos_tensor.cpu().tolist()
-                    current_chunk_new_positions_list: List[int] = current_chunk_new_positions_tensor.cpu().tolist()
+                # Create position_id -> key_index mapping for queries (OPTIMIZED: GPU-based lookup)
+                if all_current_chunk_key_indices_sorted_tensor is not None and all_current_chunk_key_indices_sorted_tensor.numel() > 0:
+                    # Batch extract new positions (keep on GPU)
+                    # OPTIMIZATION: Reuse pre-computed current_chunk_original_pos_tensor (computed once outside loop)
+                    # OPTIMIZATION: Use tensor indexing - no CPU-GPU transfer
+                    current_chunk_new_positions_tensor: torch.Tensor = position_ids_k_per_head[0, head_idx, all_current_chunk_key_indices_sorted_tensor]  # (num_current_chunk_keys,)
                     
-                    # Create mapping: original_pos -> new_pos
-                    pos_to_new_pos: Dict[int, int] = dict(zip(current_chunk_original_pos_list, current_chunk_new_positions_list))
-                else:
-                    pos_to_new_pos: Dict[int, int] = {}
-                
-                # For queries: assign same position ID as corresponding key (optimized: batch operations)
-                query_positions_tensor: torch.Tensor = position_ids_q[0, :]  # (seq_len_q,)
-                query_positions_list: List[int] = query_positions_tensor.cpu().tolist()
-                
-                # Batch lookup and assignment
-                query_new_positions: List[int] = []
-                for q_pos in query_positions_list:
-                    new_pos: Optional[int] = pos_to_new_pos.get(q_pos)
-                    assert new_pos is not None, (
-                        f"[ERROR] Head {head_idx}: Query at original pos {q_pos} has no matching key position. "
-                        f"Available key positions: {sorted(pos_to_new_pos.keys())[:10]}{'...' if len(pos_to_new_pos) > 10 else ''}. "
-                        f"This indicates a mismatch between query and key positions."
+                    # OPTIMIZATION: Use searchsorted + advanced indexing instead of Python dict lookup
+                    # current_chunk_original_pos_tensor is already sorted (pre-computed outside loop)
+                    # query_positions_tensor is pre-computed outside loop (same for all heads)
+                    
+                    # Find insertion points (searchsorted returns insertion point for exact matches)
+                    lookup_indices: torch.Tensor = torch.searchsorted(
+                        current_chunk_original_pos_tensor, 
+                        query_positions_tensor, 
+                        right=False
                     )
-                    query_new_positions.append(new_pos)
-                
-                # Batch assign all query positions at once (vectorized)
-                position_ids_q_per_head[0, head_idx, :] = torch.tensor(
-                    query_new_positions, device=position_ids_q_per_head.device, dtype=torch.long
-                )
+                    
+                    # Verify exact matches (same assertion behavior as original code)
+                    # Check bounds first to avoid out-of-bounds access
+                    valid_indices: torch.Tensor = lookup_indices < current_chunk_original_pos_tensor.shape[0]
+                    if not valid_indices.all():
+                        # Some queries are out of bounds (position too large)
+                        failed_mask: torch.Tensor = ~valid_indices
+                        failed_query_positions: List[int] = query_positions_tensor[failed_mask].cpu().tolist()
+                        max_available: int = int(current_chunk_original_pos_tensor.max().item())
+                        assert False, (
+                            f"[ERROR] Head {head_idx}: Query positions {failed_query_positions} exceed available key positions. "
+                            f"Max available position: {max_available}. "
+                            f"This indicates a mismatch between query and key positions."
+                        )
+                    
+                    # Verify exact matches at the found indices
+                    exact_matches: torch.Tensor = current_chunk_original_pos_tensor[lookup_indices] == query_positions_tensor
+                    
+                    if not exact_matches.all():
+                        # Find which queries failed to match (for better error message)
+                        failed_mask: torch.Tensor = ~exact_matches
+                        failed_query_positions: List[int] = query_positions_tensor[failed_mask].cpu().tolist()
+                        available_positions: List[int] = current_chunk_original_pos_tensor.cpu().tolist()[:10]
+                        assert False, (
+                            f"[ERROR] Head {head_idx}: Query positions {failed_query_positions} have no matching key positions. "
+                            f"Available key positions: {available_positions}{'...' if len(available_positions) >= 10 else ''}. "
+                            f"This indicates a mismatch between query and key positions."
+                        )
+                    
+                    # Use advanced indexing to get new positions (all on GPU, no CPU-GPU transfers)
+                    query_new_positions: torch.Tensor = current_chunk_new_positions_tensor[lookup_indices]
+                    position_ids_q_per_head[0, head_idx, :] = query_new_positions
+                else:
+                    # No current chunk keys - queries should also be empty, but handle gracefully
+                    # query_positions_tensor is pre-computed outside loop (same for all heads)
+                    if query_positions_tensor.numel() > 0:
+                        assert False, (
+                            f"[ERROR] Head {head_idx}: Queries exist but no current chunk keys found. "
+                            f"Query positions: {query_positions_tensor.cpu().tolist()}"
+                        )
+                    # If no queries, nothing to assign (position_ids_q_per_head already initialized to zeros)
                 
                 # Adversarial override disabled
                 # adversarial_base: int = 10_000_000
@@ -1221,84 +1208,13 @@ def get_masked_attention_output(
                 #     print(f"      → Reassigned to:     {query_assigned_positions}{'...' if seq_len_q > 10 else ''}")
                 #     print(f"      (Queries match their corresponding key positions)")
             
-            # Print concise position reassignment confirmation (only if SPARSE_DEBUG enabled)
-            if debug:
-                # Show 1-2 random heads (head 0 and middle head)
-                sample_head_indices = [0]
-                if num_heads > 1:
-                    sample_head_indices.append(num_heads // 2)
-                
-                for sample_head_idx in sample_head_indices:
-                    # Get union key indices for this head (keys selected by at least one query)
-                    union_mask: torch.Tensor = torch.any(dense_mask[0, sample_head_idx, :, :] > 0, dim=0)  # (seq_len_k,)
-                    union_key_indices: List[int] = torch.nonzero(union_mask).squeeze(-1).cpu().tolist()
-                    num_union_keys: int = len(union_key_indices)
-                    
-                    # Get prefix and current chunk key indices for this head
-                    prefix_key_indices_for_head: List[int] = [
-                        k_idx for k_idx in range(seq_len_k)
-                        if position_ids_k_actual[0, k_idx].item() < min_query_position
-                    ]
-                    current_chunk_key_indices_for_head: List[int] = [
-                        k_idx for k_idx in range(seq_len_k)
-                        if position_ids_k_actual[0, k_idx].item() >= min_query_position
-                    ]
-                    
-                    # Count union keys in prefix vs current chunk
-                    prefix_union_key_indices: List[int] = [
-                        k_idx for k_idx in union_key_indices
-                        if k_idx in prefix_key_indices_for_head
-                    ]
-                    current_chunk_union_key_indices: List[int] = [
-                        k_idx for k_idx in union_key_indices
-                        if k_idx in current_chunk_key_indices_for_head
-                    ]
-                    num_prefix_union_keys: int = len(prefix_union_key_indices)
-                    num_current_chunk_union_keys: int = len(current_chunk_union_key_indices)
-                    
-                    # Get prefix positions (first 3 and last 3)
-                    if len(prefix_key_indices_for_head) > 0:
-                        prefix_k_indices_sorted = sorted(prefix_key_indices_for_head, key=lambda k_idx: position_ids_k_actual[0, k_idx].item())
-                        prefix_first_3 = prefix_k_indices_sorted[:3]
-                        prefix_last_3 = prefix_k_indices_sorted[-3:] if len(prefix_k_indices_sorted) > 3 else prefix_k_indices_sorted
-                        
-                        prefix_first_3_orig = [position_ids_k_actual[0, k_idx].item() for k_idx in prefix_first_3]
-                        prefix_first_3_new = [position_ids_k_per_head[0, sample_head_idx, k_idx].item() for k_idx in prefix_first_3]
-                        prefix_last_3_orig = [position_ids_k_actual[0, k_idx].item() for k_idx in prefix_last_3]
-                        prefix_last_3_new = [position_ids_k_per_head[0, sample_head_idx, k_idx].item() for k_idx in prefix_last_3]
-                    else:
-                        prefix_first_3_orig = prefix_first_3_new = prefix_last_3_orig = prefix_last_3_new = []
-                    
-                    # Get current chunk positions (first 3 and last 3)
-                    if len(current_chunk_key_indices_for_head) > 0:
-                        current_chunk_k_indices_sorted = sorted(current_chunk_key_indices_for_head, key=lambda k_idx: position_ids_k_actual[0, k_idx].item())
-                        current_chunk_first_3 = current_chunk_k_indices_sorted[:3]
-                        current_chunk_last_3 = current_chunk_k_indices_sorted[-3:] if len(current_chunk_k_indices_sorted) > 3 else current_chunk_k_indices_sorted
-                        
-                        current_chunk_first_3_orig = [position_ids_k_actual[0, k_idx].item() for k_idx in current_chunk_first_3]
-                        current_chunk_first_3_new = [position_ids_k_per_head[0, sample_head_idx, k_idx].item() for k_idx in current_chunk_first_3]
-                        current_chunk_last_3_orig = [position_ids_k_actual[0, k_idx].item() for k_idx in current_chunk_last_3]
-                        current_chunk_last_3_new = [position_ids_k_per_head[0, sample_head_idx, k_idx].item() for k_idx in current_chunk_last_3]
-                    else:
-                        current_chunk_first_3_orig = current_chunk_first_3_new = current_chunk_last_3_orig = current_chunk_last_3_new = []
-                    
-                    # Get query positions (first 3 and last 3)
-                    if seq_len_q > 0:
-                        query_first_3_orig = position_ids_q[0, :3].cpu().tolist()
-                        query_first_3_new = position_ids_q_per_head[0, sample_head_idx, :3].cpu().tolist()
-                        query_last_3_orig = position_ids_q[0, -3:].cpu().tolist() if seq_len_q >= 3 else position_ids_q[0, :].cpu().tolist()
-                        query_last_3_new = position_ids_q_per_head[0, sample_head_idx, -3:].cpu().tolist() if seq_len_q >= 3 else position_ids_q_per_head[0, sample_head_idx, :].cpu().tolist()
-                    else:
-                        query_first_3_orig = query_first_3_new = query_last_3_orig = query_last_3_new = []
-                    
-                    # Print concise summary
-                    print(f"  [Reposition] Head {sample_head_idx}: union={num_union_keys} (prefix={num_prefix_union_keys}, current={num_current_chunk_union_keys})")
-                    if len(prefix_first_3_orig) > 0:
-                        print(f"    Prefix K: first3 orig={prefix_first_3_orig} → new={prefix_first_3_new}, last3 orig={prefix_last_3_orig} → new={prefix_last_3_new}")
-                    if len(current_chunk_first_3_orig) > 0:
-                        print(f"    Current K: first3 orig={current_chunk_first_3_orig} → new={current_chunk_first_3_new}, last3 orig={current_chunk_last_3_orig} → new={current_chunk_last_3_new}")
-                    if len(query_first_3_orig) > 0:
-                        print(f"    Query Q: first3 orig={query_first_3_orig} → new={query_first_3_new}, last3 orig={query_last_3_orig} → new={query_last_3_new}")
+            per_head_elapsed: float = time.time() - per_head_start_time
+            layer_idx: Optional[int] = kwargs.get("layer_idx", None)
+            if os.environ.get("SPARSE_DEBUG"):
+                print(f"[reposition] layer={layer_idx} per_head_reassign elapsed={per_head_elapsed:.3f}s ({num_heads} heads)", flush=True)
+            
+            # Timing: rotary_emb calls
+            rotary_start_time: float = time.time()
             
             # Compute cos/sin per head with modified positions
             num_kv_heads: int = keys.shape[1]  # GQA: keys may have fewer heads
@@ -1312,33 +1228,79 @@ def get_masked_attention_output(
             # Compute cos/sin for all query heads
             # Use same dtype as queries to avoid dtype mismatch (bfloat16 vs float32)
             queries_dtype: torch.dtype = queries.dtype
-            for head_idx in range(num_heads):
+            # OPTIMIZATION: Create dummy tensors once and reuse (rotary_emb doesn't modify them)
+            dummy_x_q_all: torch.Tensor = torch.zeros(
+                batch_size, seq_len_q, device=queries.device, dtype=queries_dtype
+            )
+            # OPTIMIZATION: Pre-allocate output tensors instead of building list + stacking
+            # Get head_dim from first rotary_emb call
+            pos_ids_q_first: torch.Tensor = position_ids_q_per_head[:, 0, :]  # (batch, seq_len_q)
+            cos_q_first, sin_q_first = rotary_emb(dummy_x_q_all, pos_ids_q_first)
+            head_dim_q: int = cos_q_first.shape[-1]  # Get head_dim from output shape
+            
+            # Pre-allocate output tensors
+            cos_q_mod: torch.Tensor = torch.zeros(
+                batch_size, num_heads, seq_len_q, head_dim_q,
+                device=queries.device, dtype=queries_dtype
+            )
+            sin_q_mod: torch.Tensor = torch.zeros(
+                batch_size, num_heads, seq_len_q, head_dim_q,
+                device=queries.device, dtype=queries_dtype
+            )
+            
+            # Assign first head (already computed)
+            cos_q_mod[:, 0, :, :] = cos_q_first
+            sin_q_mod[:, 0, :, :] = sin_q_first
+            
+            # Compute remaining query heads
+            for head_idx in range(1, num_heads):
                 pos_ids_q_head: torch.Tensor = position_ids_q_per_head[:, head_idx, :]  # (batch, seq_len_q)
-                dummy_x_q_head: torch.Tensor = torch.zeros(
-                    batch_size, seq_len_q, device=queries.device, dtype=queries_dtype
-                )
-                cos_q_head, sin_q_head = rotary_emb(dummy_x_q_head, pos_ids_q_head)
-                cos_q_per_head_list.append(cos_q_head)
-                sin_q_per_head_list.append(sin_q_head)
+                # OPTIMIZATION: Reuse dummy tensor (functionally identical - rotary_emb doesn't modify input)
+                cos_q_head, sin_q_head = rotary_emb(dummy_x_q_all, pos_ids_q_head)
+                # OPTIMIZATION: Direct assignment instead of list append
+                cos_q_mod[:, head_idx, :, :] = cos_q_head
+                sin_q_mod[:, head_idx, :, :] = sin_q_head
             
             # Compute cos/sin for key heads only (GQA)
             # Use same dtype as keys to avoid dtype mismatch (bfloat16 vs float32)
             keys_dtype: torch.dtype = keys.dtype
-            for kv_head_idx in range(num_kv_heads):
+            # OPTIMIZATION: Create dummy tensor once and reuse (rotary_emb doesn't modify it)
+            dummy_x_k_all: torch.Tensor = torch.zeros(
+                batch_size, seq_len_k, device=keys.device, dtype=keys_dtype
+            )
+            # OPTIMIZATION: Pre-allocate output tensors instead of building list + stacking
+            # Get head_dim from first rotary_emb call
+            pos_ids_k_first: torch.Tensor = position_ids_k_per_head[:, 0, :]  # (batch, seq_len_k)
+            cos_k_first, sin_k_first = rotary_emb(dummy_x_k_all, pos_ids_k_first)
+            head_dim_k: int = cos_k_first.shape[-1]  # Get head_dim from output shape
+            
+            # Pre-allocate output tensors
+            cos_k_mod: torch.Tensor = torch.zeros(
+                batch_size, num_kv_heads, seq_len_k, head_dim_k,
+                device=keys.device, dtype=keys_dtype
+            )
+            sin_k_mod: torch.Tensor = torch.zeros(
+                batch_size, num_kv_heads, seq_len_k, head_dim_k,
+                device=keys.device, dtype=keys_dtype
+            )
+            
+            # Assign first key head (already computed)
+            cos_k_mod[:, 0, :, :] = cos_k_first
+            sin_k_mod[:, 0, :, :] = sin_k_first
+            
+            # Compute remaining key heads
+            for kv_head_idx in range(1, num_kv_heads):
                 query_head_idx: int = kv_head_idx * head_ratio
                 pos_ids_k_head: torch.Tensor = position_ids_k_per_head[:, query_head_idx, :]  # (batch, seq_len_k)
-                dummy_x_k_head: torch.Tensor = torch.zeros(
-                    batch_size, seq_len_k, device=keys.device, dtype=keys_dtype
-                )
-                cos_k_head, sin_k_head = rotary_emb(dummy_x_k_head, pos_ids_k_head)
-                cos_k_per_head_list.append(cos_k_head)
-                sin_k_per_head_list.append(sin_k_head)
+                # OPTIMIZATION: Reuse dummy tensor (functionally identical - rotary_emb doesn't modify input)
+                cos_k_head, sin_k_head = rotary_emb(dummy_x_k_all, pos_ids_k_head)
+                # OPTIMIZATION: Direct assignment instead of list append
+                cos_k_mod[:, kv_head_idx, :, :] = cos_k_head
+                sin_k_mod[:, kv_head_idx, :, :] = sin_k_head
             
-            # Stack to get proper shapes
-            cos_q_mod: torch.Tensor = torch.stack(cos_q_per_head_list, dim=1)  # (batch, num_heads, seq_len_q, head_dim)
-            sin_q_mod: torch.Tensor = torch.stack(sin_q_per_head_list, dim=1)
-            cos_k_mod: torch.Tensor = torch.stack(cos_k_per_head_list, dim=1)  # (batch, num_kv_heads, seq_len_k, head_dim)
-            sin_k_mod: torch.Tensor = torch.stack(sin_k_per_head_list, dim=1)
+            rotary_elapsed: float = time.time() - rotary_start_time
+            if os.environ.get("SPARSE_DEBUG"):
+                print(f"[reposition] layer={layer_idx} rotary_emb elapsed={rotary_elapsed:.3f}s ({num_heads}Q+{num_kv_heads}K heads)", flush=True)
             
             # CRITICAL VERIFICATION: Ensure position reassignment actually happened
             # Check that position_ids_q_per_head and position_ids_k_per_head are NOT all zeros
@@ -1353,6 +1315,14 @@ def get_masked_attention_output(
                 f"[CRITICAL ERROR] position_ids_k_per_head is all zeros! "
                 f"This means position reassignment failed silently. Sum={k_positions_sum}"
             )
+            
+            # DEBUG: Log actual position ranges to verify repositioning
+            if os.environ.get("SPARSE_DEBUG_POSITIONS", "0").lower() in ("1", "true", "yes"):
+                q_max = position_ids_q_per_head.max().item()
+                q_min = position_ids_q_per_head.min().item()
+                k_max = position_ids_k_per_head.max().item()
+                k_min = position_ids_k_per_head.min().item()
+                print(f"[DEBUG POSITIONS] layer={layer_idx} Q range: [{q_min}, {q_max}], K range: [{k_min}, {k_max}], max_allowed={max_position_id_allowed}", flush=True)
             
             # Verify that reassigned positions were actually computed (not left as zeros)
             # Check that at least some positions are non-zero (unless legitimately all zeros for first prefill)
@@ -1394,12 +1364,6 @@ def get_masked_attention_output(
             # Verify reroped matches original (will be different due to position reassignment)
             reroped_q_diff = torch.abs(queries - reroped_queries).max()
             reroped_k_diff = torch.abs(keys - reroped_keys).max()
-            if debug:
-                # Keep crucial success message
-                print(f"  [SUCCESS] Position reassignment completed (q_diff={reroped_q_diff.item():.6f}, k_diff={reroped_k_diff.item():.6f})")
-                # Commented out verbose verification details - uncomment if needed
-                # print(f"  [Re-roped Verification] q_diff.max()={reroped_q_diff.item():.6f}, k_diff.max()={reroped_k_diff.item():.6f}")
-                # print(f"  [INFO] Position reassignment applied - differences expected (original positions changed)")
             
             # Compute attention weights with re-roped Q/K
             exp_attention_weights_reroped: torch.Tensor = _compute_masked_exp_attention_weights(
@@ -1416,17 +1380,6 @@ def get_masked_attention_output(
             # ====================================================================
             # Reuse dense_mask from line 725 (already computed above)
             # dense_mask is already available from position reassignment section
-            # Only compute diagnostics if SPARSE_DEBUG enabled
-            if debug:
-                # Compute key metrics for summary
-                weights_diff_all = torch.abs(exp_attention_weights - exp_attention_weights_reroped)
-                weights_diff = weights_diff_all.max()
-                orig_max = exp_attention_weights.abs().max().item()
-                reroped_max = exp_attention_weights_reroped.abs().max().item()
-                weights_rel_diff = (weights_diff / (orig_max + 1e-8)).item()
-                
-                # Keep crucial summary - easy to see key metric
-                print(f"  [Attention Weights] max_diff={weights_diff.item():.6f}, rel_diff={weights_rel_diff:.6f} (expected: position IDs changed)")
                 
                 # Commented out verbose per-query comparisons - uncomment if needed for debugging
                 # num_heads: int = exp_attention_weights.shape[1]
@@ -1646,37 +1599,14 @@ def get_masked_attention_output(
                 "[CRITICAL ERROR] Reroped weights are identical to original! "
                 "This suggests position reassignment had no effect or failed silently."
             )
-            if debug:
-                sum_abs_diff = torch.abs(exp_attention_weights - exp_attention_weights_reroped).sum().item()
-                layer_id = kwargs.get("layer_idx", "?")
-                print(f"  [APPLY] layer={layer_id} replacing original weights with reroped (sum_abs_diff={sum_abs_diff:.6f})")
-            
             exp_attention_weights = exp_attention_weights_reroped.to(exp_attention_weights.dtype)
+            
+            reposition_total_elapsed: float = time.time() - reposition_start_time
+            if os.environ.get("SPARSE_DEBUG"):
+                print(f"[reposition] layer={layer_idx} TOTAL elapsed={reposition_total_elapsed:.3f}s", flush=True)
         except Exception as e:
             assert False, f"  [Unroped/Re-roped] Exception: {e}"
         
-        # Final diagnostic prints (only if SPARSE_DEBUG enabled)
-        if debug:
-            # Keep crucial summary - easy to see key info
-            mask_density = sparse_attention_mask.get_density()
-            print(f"  [Attention] mask_density={mask_density:.4f}, queries.shape={queries.shape}, keys.shape={keys.shape}")
-            
-            # Commented out verbose per-head/per-query details - uncomment if needed for debugging
-            # if position_ids_q is not None:
-            #     min_q_pos = position_ids_q[0, 0].item()
-            #     max_q_pos = position_ids_q[0, -1].item()
-            #     print(f"  Query position_ids: {min_q_pos}...{max_q_pos}")
-            # else:
-            #     print(f"  Query position_ids: N/A")
-            # print(f"  Key position_ids: 0...{seq_len_keys-1}")
-            # for head_idx in sample_heads:
-            #     print(f"\n  Head {head_idx}:")
-            #     for q_idx in sample_queries:
-            #         active_keys = torch.nonzero(dense_mask[0, head_idx, q_idx] > 0).squeeze(-1).cpu().tolist()
-            #         active_keys_sorted = sorted(active_keys)
-            #         print(f"    Q{q_idx}: attends to {len(active_keys)}/{keys.shape[2]} keys")
-            #         print(f"      Key positions: {active_keys_sorted[:30]}{'...' if len(active_keys_sorted) > 30 else ''}{active_keys_sorted[-10:] if len(active_keys_sorted) > 40 else ''}")
-            # print()  # Extra newline for readability
 
     # Prepare values by applying key-value grouping
     num_key_value_groups: int = _get_num_key_value_groups(queries, values)

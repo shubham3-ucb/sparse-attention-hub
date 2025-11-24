@@ -1,0 +1,46 @@
+{
+  "dense": [
+    {
+      "response": " Gates v. Collier",
+      "elapsed_s": 3.282843589782715
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 4.347004652023315
+    },
+    {
+      "response": " Lowell, Michigan.",
+      "elapsed_s": 4.359208345413208
+    },
+    {
+      "response": " Jupiter",
+      "elapsed_s": 4.2773144245147705
+    },
+    {
+      "response": " film",
+      "elapsed_s": 4.180601119995117
+    }
+  ],
+  "sparse": [
+    {
+      "response": " Miller v. California",
+      "elapsed_s": 40.693843126297
+    },
+    {
+      "response": " Charles L. Clifford",
+      "elapsed_s": 65.7990870475769
+    },
+    {
+      "response": " Lowell",
+      "elapsed_s": 58.10928177833557
+    },
+    {
+      "response": " Mars, Jupiter, the Sun, and",
+      "elapsed_s": 65.24285745620728
+    },
+    {
+      "response": " Film",
+      "elapsed_s": 49.9368679523468
+    }
+  ]
+}
