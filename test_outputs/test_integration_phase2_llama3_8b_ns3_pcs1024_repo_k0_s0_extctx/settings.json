@@ -1,0 +1,98 @@
+{
+  "test_info": {
+    "test_name": "Phase 2: Repositioning Verification (K=0, S=0)",
+    "test_date": "2025-11-24 23:35:55",
+    "phase": 2
+  },
+  "model": {
+    "model_name": "meta-llama/Meta-Llama-3-8B-Instruct",
+    "model_short": "llama3_8b",
+    "device": "cuda",
+    "torch_dtype": "bfloat16"
+  },
+  "dataset": {
+    "name": "HotpotQA (LongBench)",
+    "num_samples": 3,
+    "max_new_tokens": 52,
+    "repeat_count": 1
+  },
+  "chunked_prefill": {
+    "enabled": true,
+    "chunk_size": 1024,
+    "description": "Processes long contexts in chunks to manage memory"
+  },
+  "sparse_attention": {
+    "enabled": true,
+    "technique": "Multi-Masker Sparse Attention",
+    "maskers": [
+      {
+        "name": "SinkMasker",
+        "type": "SinkMaskerConfig",
+        "sink_size": 128,
+        "description": "Keeps first 128 tokens (global context) - always attends to initial tokens"
+      },
+      {
+        "name": "LocalMasker",
+        "type": "LocalMaskerConfig",
+        "window_size": 128,
+        "description": "Sliding window of 128 tokens around each query position - local attention"
+      },
+      {
+        "name": "OracleTopK",
+        "type": "OracleTopKConfig",
+        "heavy_size": 0.1,
+        "description": "Selects top 10.0% most important tokens based on ground truth attention weights (research only)"
+      }
+    ],
+    "total_sparsity": "~10.0% (OracleTopK) + local window + sink tokens",
+    "note": "OracleTopK uses ground truth attention weights - for research/evaluation only"
+  },
+  "repositioning": {
+    "enabled": true,
+    "num_sink_tokens": 0,
+    "prefix_freeze_tail_k": 0,
+    "pack_k_chunk_translation": true,
+    "description": "Two-band scaling: S=0 (sink tokens frozen), K=0 (tail tokens frozen), middle band compressed"
+  },
+  "extend_context": {
+    "enabled": true,
+    "description": "Use unroped Q/K for mask computation (position-agnostic similarity)"
+  },
+  "micro_metrics": {
+    "enabled": true,
+    "log_path": "/home/nvidia/shubham/sparse/prod_code/sparse-attention-hub/test_outputs/test_integration_phase2_llama3_8b_ns3_pcs1024_repo_k0_s0_extctx/micro_metrics.jsonl",
+    "enabled_metrics": [
+      "research_mask_roped_vs_unroped",
+      "research_attention_weight_diff"
+    ],
+    "note": "Micro metrics are logged ONLY for sparse_chunked runs (matching old codebase: only research_attention_weight_diff + research_mask_roped_vs_unroped if flag set)",
+    "description": "Micro-level metrics matching old codebase: weight differences and mask comparisons (if COMPARE_MASK_ROPED_VS_UNROPED=1)"
+  },
+  "scenarios": [
+    {
+      "name": "dense_chunked",
+      "description": "Dense attention with chunked prefill",
+      "sparse": false,
+      "chunked": true
+    },
+    {
+      "name": "sparse_chunked",
+      "description": "Sparse attention with chunked prefill (main test)",
+      "sparse": true,
+      "chunked": true
+    }
+  ],
+  "reproduction": {
+    "command": "cd /home/nvidia/shubham/sparse/prod_code/sparse-attention-hub\nMODEL_NAME=\"meta-llama/Meta-Llama-3-8B-Instruct\" \\\nNUM_SAMPLES=3 \\\nPREFILL_CHUNK_SIZE=1024 \\\nORACLE_TOPK_HEAVY_SIZE=0.1 \\\nSINK_SIZE=128 \\\nLOCAL_WINDOW_SIZE=128 \\\nOUTPUT_DIR=\"/home/nvidia/shubham/sparse/prod_code/sparse-attention-hub/test_outputs/test_integration_phase2_llama3_8b_ns3_pcs1024_repo_k0_s0_extctx\" \\\nSPARSE_DEBUG=1 \\\n./test_scripts/run_test.sh",
+    "environment_variables": {
+      "MODEL_NAME": "meta-llama/Meta-Llama-3-8B-Instruct",
+      "NUM_SAMPLES": "3",
+      "PREFILL_CHUNK_SIZE": "1024",
+      "ORACLE_TOPK_HEAVY_SIZE": "0.1",
+      "SINK_SIZE": "128",
+      "LOCAL_WINDOW_SIZE": "128",
+      "OUTPUT_DIR": "/home/nvidia/shubham/sparse/prod_code/sparse-attention-hub/test_outputs/test_integration_phase2_llama3_8b_ns3_pcs1024_repo_k0_s0_extctx",
+      "SPARSE_DEBUG": "1"
+    }
+  }
+}

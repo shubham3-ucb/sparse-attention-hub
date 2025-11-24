@@ -1,0 +1,48 @@
+{
+  "test_info": {
+    "model_name": "meta-llama/Llama-3.1-8B-Instruct",
+    "num_samples": 5,
+    "chunk_size": 1024,
+    "test_date": "2025-11-24 06:52:50"
+  },
+  "scenarios": {
+    "dense_chunked": {
+      "successful": 5,
+      "failed": 0,
+      "avg_elapsed_s": 3.06,
+      "overall_score": 36.67
+    },
+    "dense_single": {
+      "successful": 5,
+      "failed": 0,
+      "avg_elapsed_s": 1.58,
+      "overall_score": 36.67
+    },
+    "sparse_chunked": {
+      "successful": 5,
+      "failed": 0,
+      "avg_elapsed_s": 14.82,
+      "overall_score": 36.67
+    },
+    "sparse_single": {
+      "successful": 5,
+      "failed": 0,
+      "avg_elapsed_s": 10.0,
+      "overall_score": 36.67
+    }
+  },
+  "comparisons": {
+    "dense_chunked_vs_single": {
+      "chunked_score": 36.67,
+      "single_score": 36.67,
+      "score_difference": 0.0,
+      "match": true
+    },
+    "sparse_chunked_vs_single": {
+      "chunked_score": 36.67,
+      "single_score": 36.67,
+      "score_difference": 0.0,
+      "match": true
+    }
+  }
+}

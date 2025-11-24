@@ -1,0 +1,17 @@
+{
+  "test_info": {
+    "model_name": "meta-llama/Llama-3.1-8B-Instruct",
+    "num_samples": 3,
+    "chunk_size": 1024,
+    "test_date": "2025-11-24 23:35:31"
+  },
+  "scenarios": {
+    "sparse_chunked": {
+      "successful": 3,
+      "failed": 0,
+      "avg_elapsed_s": 52.22,
+      "overall_score": 66.67
+    }
+  },
+  "comparisons": {}
+}

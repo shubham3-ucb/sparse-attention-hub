@@ -1,12 +1,33 @@
 """Utility functions for masked attention computation."""
 
-from typing import Any, Dict, Optional, Tuple, Union
+import os
+import time
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 from torch import nn
 
 from .kv_utils import _get_num_key_value_groups, repeat_kv
 from .mask import Mask
+
+# Import repositioning utilities and re-export constants for backward compatibility
+from .repositioning_utils import (
+    _apply_position_reassignment,
+    DEFAULT_USE_PROPORTIONAL_PREFIX_SCALING,
+    DEFAULT_PREFIX_SCALE_ALPHA,
+    DEFAULT_USE_TWO_BAND_PREFIX_SCALING,
+    DEFAULT_PACK_K_CHUNK_TRANSLATION,
+    DEFAULT_MAX_POSITION_ID,
+)
+
+# Re-export constants for backward compatibility
+__all__ = [
+    "DEFAULT_USE_PROPORTIONAL_PREFIX_SCALING",
+    "DEFAULT_PREFIX_SCALE_ALPHA",
+    "DEFAULT_USE_TWO_BAND_PREFIX_SCALING",
+    "DEFAULT_PACK_K_CHUNK_TRANSLATION",
+    "DEFAULT_MAX_POSITION_ID",
+]
 
 
 def get_true_attention_output(
@@ -351,6 +372,7 @@ def get_masked_attention_output(
     dropout: float,
     sparse_attention_mask: Mask,
     return_attention_weights: bool = False,
+    sparse_meta_data: Optional[Dict[str, Any]] = None,
     **kwargs: Dict[str, Any],
 ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
     """Get masked attention output by dividing numerator by denominator.
@@ -386,6 +408,134 @@ def get_masked_attention_output(
         dropout=dropout,
         training=training,
     )
+    
+    
+     # if sparse_attention_mask.get_density() < 0.3: import pdb; pdb.set_trace()
+     
+     # Print attention pattern for sample queries and heads
+    # Commented out mask analysis section for performance (redundant with position reassignment logic below)
+    # if sparse_attention_mask.get_density() < 0.3:
+    #     # Analyze which key positions are preserved (not dropped) in the mask
+    #     dense_mask = sparse_attention_mask.get_dense_mask()  # [batch, num_heads, seq_len_q, seq_len_k]
+    #     num_heads = dense_mask.shape[1]
+    #     seq_len_q = dense_mask.shape[2]
+    #     seq_len_k = dense_mask.shape[3]
+    #     layer_idx = kwargs.get("layer_idx", "?")
+    #     
+    #     # Per-head: union and intersection of keys across queries
+    #     union_keys_per_head = []  # Keys attended by ANY query
+    #     intersection_keys_per_head = []  # Keys attended by ALL queries
+    #     for head_idx in range(num_heads):
+    #         print(f"Head {head_idx}:")
+    #         # Get keys for each query
+    #         keys_per_query = []
+    #         for q_idx in range(seq_len_q):
+    #             active_keys = set(torch.nonzero(dense_mask[0, head_idx, q_idx] > 0).squeeze(-1).cpu().tolist())
+    #             keys_per_query.append(active_keys)
+    #         
+    #         # Union: keys attended by ANY query
+    #         union_keys = set()
+    #         for q_keys in keys_per_query:
+    #             union_keys |= q_keys
+    #         union_keys_per_head.append(union_keys)
+    #         
+    #         # Intersection: keys attended by ALL queries
+    #         if keys_per_query:
+    #             intersection_keys = keys_per_query[0].copy()
+    #             for q_keys in keys_per_query[1:]:
+    #                 intersection_keys &= q_keys
+    #         else:
+    #             intersection_keys = set()
+    #         intersection_keys_per_head.append(intersection_keys)
+    #     
+    #     # Print clean statistics
+    #     print(f"\n[Mask Analysis] Layer {layer_idx}:")
+    #     print(f"  Total queries: {seq_len_q}, Total key positions: {seq_len_k}")
+    #     for head_idx in range(num_heads):
+    #         union_count = len(union_keys_per_head[head_idx])
+    #         intersection_count = len(intersection_keys_per_head[head_idx])
+    #         union_pct = (union_count / seq_len_k) * 100
+    #         intersection_pct = (intersection_count / seq_len_k) * 100 if seq_len_k > 0 else 0
+    #         print(f"  Head {head_idx}: Union={union_count}/{seq_len_k} ({union_pct:.1f}%), Intersection={intersection_count}/{seq_len_k} ({intersection_pct:.1f}%)")
+    #     
+        # # Detailed analysis for sample head (head 0)
+        # sample_head = 0
+        # keys_per_query = []
+        # for q_idx in range(seq_len_q):
+        #     active_keys = set(torch.nonzero(dense_mask[0, sample_head, q_idx] > 0).squeeze(-1).cpu().tolist())
+        #     keys_per_query.append(active_keys)
+        
+        # # Count how many queries share each key
+        # key_to_query_count = {}
+        # for q_idx, q_keys in enumerate(keys_per_query):
+        #     for k in q_keys:
+        #         key_to_query_count[k] = key_to_query_count.get(k, 0) + 1
+        
+        # # Statistics on key sharing
+        # sharing_counts = {}
+        # for count in key_to_query_count.values():
+        #     sharing_counts[count] = sharing_counts.get(count, 0) + 1
+        
+        # print(f"\n  [Key Sharing Analysis] Head {sample_head}:")
+        # print(f"    Keys attended by 1 query: {sharing_counts.get(1, 0)}")
+        # print(f"    Keys attended by 2-5 queries: {sum(sharing_counts.get(i, 0) for i in range(2, 6))}")
+        # print(f"    Keys attended by 6-10 queries: {sum(sharing_counts.get(i, 0) for i in range(6, 11))}")
+        # print(f"    Keys attended by >10 queries: {sum(sharing_counts.get(i, 0) for i in range(11, seq_len_q+1))}")
+        # print(f"    Keys attended by ALL queries: {len(intersection_keys_per_head[sample_head])}")
+        # print()
+        
+    import random
+    from sparse_attention_hub.sparse_attention.research_attention.rope_utils import (
+        unapply_rotary_pos_emb_queries,
+        unapply_rotary_pos_emb_keys,
+        apply_rotary_pos_emb,
+    )
+    
+    dense_mask = sparse_attention_mask.get_dense_mask()
+    num_queries = queries.shape[2]
+    num_heads = queries.shape[1]
+    seq_len_keys = keys.shape[2]
+    sample_queries = sorted(random.sample(range(min(num_queries, 256)), min(3, num_queries)))
+    sample_heads = [0, min(1, num_heads - 1)]
+    
+    # Get cos/sin for unroping
+    position_ids_q = kwargs.get("position_ids")  # Query positions
+    position_ids_k = torch.arange(0, seq_len_keys, device=keys.device, dtype=torch.long).unsqueeze(0)  # Key positions [0, seq_len_keys-1]
+    
+    # Try to get rotary_emb from sparse_meta_data (preferred) or module
+    rotary_emb = None
+    if sparse_meta_data is not None:
+        rotary_emb = sparse_meta_data.get("_rotary_emb")
+    if rotary_emb is None:
+        if hasattr(module, "rotary_emb"):
+            rotary_emb = module.rotary_emb
+        elif hasattr(module, "model") and hasattr(module.model, "rotary_emb"):
+            rotary_emb = module.model.rotary_emb
+    
+    unroped_queries = queries
+    unroped_keys = keys
+    # Check if position reassignment is enabled (default: False)
+    # When disabled, unroping for mask computation can still happen via EXTEND_CONTEXT in base.py
+    # but repositioning/re-roping is skipped here
+    enable_position_reassignment: bool = os.environ.get("ENABLE_POSITION_REASSIGNMENT", "0").lower() in ("1", "true", "yes")
+    # if (rotary_emb is not None and position_ids_q is not None) and enable_position_reassignment:
+    
+    if (sparse_attention_mask.get_density() < 1.0) and (rotary_emb is not None and position_ids_q is not None) and enable_position_reassignment:
+        # Apply position reassignment using extracted function
+        exp_attention_weights = _apply_position_reassignment(
+            queries=queries,
+            keys=keys,
+            rotary_emb=rotary_emb,
+            position_ids_q=position_ids_q,
+            position_ids_k=position_ids_k,
+            sparse_attention_mask=sparse_attention_mask,
+            exp_attention_weights=exp_attention_weights,
+            attention_mask=attention_mask,
+            scaling=scaling,
+            dropout=dropout,
+            training=training,
+            kwargs=kwargs,
+        )
 
     # Prepare values by applying key-value grouping
     num_key_value_groups: int = _get_num_key_value_groups(queries, values)

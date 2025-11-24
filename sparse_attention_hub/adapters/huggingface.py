@@ -5,7 +5,10 @@ import string
 from contextlib import contextmanager
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple
 
+import os
+import time
 import torch
+import numpy as np
 from tqdm import tqdm
 from transformers.masking_utils import ALL_MASK_ATTENTION_FUNCTIONS
 from transformers.modeling_utils import ALL_ATTENTION_FUNCTIONS
@@ -76,6 +79,311 @@ class ModelAdapterHF(ModelAdapter):
         """Clean up registered attention functions when the adapter is destroyed."""
         self._cleanup_attention_registration()
 
+    @staticmethod
+    def _get_prefill_log_path() -> str:
+        """Return the path to the prefill log file.
+
+        Priority: SPARSE_LOG_PATH env var -> OUTPUT_DIR env var (hf_prefill.log) -> ./output_test_sparse/hf_prefill.log
+        """
+        base = os.environ.get("OUTPUT_DIR", os.path.join(os.getcwd(), "output_test_sparse"))
+        return os.environ.get("SPARSE_LOG_PATH", os.path.join(base, "hf_prefill.log"))
+
+    def _chunked_prefill_sparse(
+        self,
+        context_tokens: torch.Tensor,
+        sparse_meta_data: Dict[str, Any],
+        chunk_size: int,
+    ) -> Any:
+        """Perform chunked sparse prefill.
+
+        Args:
+            context_tokens: Input tokens tensor
+            sparse_meta_data: Sparse attention metadata dict
+            chunk_size: Size of each chunk
+
+        Returns:
+            Model outputs from last chunk
+        """
+        total_len = context_tokens.shape[1]
+        past = None
+        chunked_outputs = None
+        seq_lens = []
+        meta_keys_history = []
+        log_path = self._get_prefill_log_path()
+        for i in range(0, total_len, chunk_size):
+            chunk = context_tokens[:, i : i + chunk_size]
+            chunk_start_time: float = time.time()
+            if os.environ.get("SPARSE_DEBUG"):
+                print(f"[prefill] sparse chunk idx={i} chunk_shape={chunk.shape}", flush=True)
+                try:
+                    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+                    with open(log_path, "a") as fh:
+                        fh.write(f"[prefill] sparse chunk idx={i} chunk_shape={chunk.shape}\n")
+                except Exception:
+                    pass
+            try:
+                pos_ids = torch.arange(i, i + chunk.shape[1], device=chunk.device).unsqueeze(0)
+                chunked_outputs = self.model(
+                    chunk,
+                    past_key_values=(None if past is None else past),
+                    position_ids=pos_ids,
+                    use_cache=True,
+                    sparse_meta_data=sparse_meta_data,
+                )
+                chunk_elapsed: float = time.time() - chunk_start_time
+                if os.environ.get("SPARSE_DEBUG"):
+                    print(f"[prefill] sparse chunk idx={i} elapsed={chunk_elapsed:.3f}s", flush=True)
+                    try:
+                        with open(log_path, "a") as fh:
+                            fh.write(f"[prefill] sparse chunk idx={i} elapsed={chunk_elapsed:.3f}s\n")
+                    except Exception:
+                        pass
+            except Exception:
+                chunked_outputs = self.model(
+                    chunk,
+                    past_key_values=(None if past is None else past),
+                    use_cache=True,
+                    sparse_meta_data=sparse_meta_data,
+                )
+            past = getattr(chunked_outputs, "past_key_values", None)
+            # record seq len
+            seq_len = None
+            try:
+                if past is not None:
+                    sample = past[0][0]
+                    seq_len = sample.shape[-2]
+            except Exception:
+                seq_len = None
+            seq_lens.append(seq_len)
+            meta_keys_history.append(list(sparse_meta_data.keys()))
+
+        context_outputs = chunked_outputs
+
+        # Sanity checks: seq_lens should be non-decreasing and final == total_len
+        ok_seq = True
+        try:
+            # filter None
+            numeric = [s for s in seq_lens if s is not None]
+            if len(numeric) == 0:
+                ok_seq = False
+            else:
+                if numeric[-1] != total_len:
+                    ok_seq = False
+                for a, b in zip(numeric, numeric[1:]):
+                    if b < a:
+                        ok_seq = False
+                        break
+        except Exception:
+            ok_seq = False
+
+        # log results
+        if os.environ.get("SPARSE_DEBUG"):
+            try:
+                smsg = f"[prefill] sparse chunked seq_lens={seq_lens}"
+                print(smsg, flush=True)
+                with open(log_path, "a") as fh:
+                    fh.write(smsg + "\n")
+                meta_msg = f"[prefill] sparse_meta_keys_progress={meta_keys_history}"
+                print(meta_msg, flush=True)
+                with open(log_path, "a") as fh:
+                    fh.write(meta_msg + "\n")
+            except Exception:
+                pass
+
+        if not ok_seq:
+            msg = f"[prefill] SPARSE CHUNK SANITY FAILED: seq_lens={seq_lens} total_len={total_len}"
+            print(msg, flush=True)
+            try:
+                with open(log_path, "a") as fh:
+                    fh.write(msg + "\n")
+            except Exception:
+                pass
+            raise AssertionError(msg)
+        else:
+            msg = f"[prefill] SPARSE CHUNK SANITY OK: final_seq={seq_lens[-1]} total_len={total_len}"
+            if os.environ.get("SPARSE_DEBUG"):
+                print(msg, flush=True)
+                try:
+                    with open(log_path, "a") as fh:
+                        fh.write(msg + "\n")
+                except Exception:
+                    pass
+
+        return context_outputs
+
+    def _chunked_prefill_dense(
+        self,
+        context_tokens: torch.Tensor,
+        sparse_meta_data: Dict[str, Any],
+        chunk_size: int,
+        assert_chunk_equals_full: bool = False,
+    ) -> Any:
+        """Perform chunked dense prefill.
+
+        Args:
+            context_tokens: Input tokens tensor
+            sparse_meta_data: Sparse attention metadata dict
+            chunk_size: Size of each chunk
+            assert_chunk_equals_full: Whether to assert chunked == full prefill
+
+        Returns:
+            Model outputs from last chunk
+        """
+        def _get_seq_from_past(past_obj: Any) -> Optional[int]:
+            if past_obj is None:
+                return None
+            if hasattr(past_obj, "get_seq_length"):
+                try:
+                    return past_obj.get_seq_length()
+                except Exception:
+                    pass
+            try:
+                sample = past_obj[0][0]
+                return sample.shape[-2]
+            except Exception:
+                return None
+
+        def _compare_past(p1: Any, p2: Any) -> None:
+            # Compare structure and tensor equality of past_key_values
+            if (p1 is None) != (p2 is None):
+                raise AssertionError("past_key_values presence mismatch")
+            if p1 is None and p2 is None:
+                return
+            if len(p1) != len(p2):
+                raise AssertionError(f"num layers mismatch: {len(p1)} vs {len(p2)}")
+            for li, (l1, l2) in enumerate(zip(p1, p2)):
+                if len(l1) != len(l2):
+                    raise AssertionError(f"layer {li} tuple length mismatch")
+                for ti, (t1, t2) in enumerate(zip(l1, l2)):
+                    if t1.shape != t2.shape:
+                        raise AssertionError(f"tensor shape mismatch at layer {li} tensor {ti}: {t1.shape} vs {t2.shape}")
+
+                    # cast to float for safe comparison (handles bfloat16/float16 kernels)
+                    t1f = t1.float()
+                    t2f = t2.float()
+                    if not torch.allclose(t1f, t2f, atol=1e-3, rtol=1e-3):
+                        # compute helpful diagnostics
+                        try:
+                            diff = (t1f - t2f).abs()
+                            max_diff = float(diff.max())
+                            mean_diff = float(diff.mean())
+                            numel = diff.numel()
+                            n_diffs = int((diff > 1e-3).sum().item()) if numel > 0 else 0
+                            # argmax index
+                            argmax = int(diff.view(-1).argmax().item()) if numel > 0 else None
+                            if argmax is not None:
+                                try:
+                                    idx = list(np.unravel_index(argmax, diff.shape))
+                                except Exception:
+                                    idx = [argmax]
+                            else:
+                                idx = None
+                            # sample first few differing values
+                            flat_diff = diff.view(-1)
+                            topk = 8
+                            vals = flat_diff[flat_diff.argsort(descending=True)[:topk]].cpu().tolist() if numel > 0 else []
+                        except Exception:
+                            max_diff = None
+                            mean_diff = None
+                            n_diffs = None
+                            idx = None
+                            vals = []
+
+                        # print diagnostics to both stdout and prefill log if possible
+                        msg = (
+                            f"tensor values differ at layer {li} tensor {ti} | shape={t1.shape} | "
+                            f"max_diff={max_diff} mean_diff={mean_diff} num_diffs_gt_tol={n_diffs} argmax_index={idx} sample_top_diffs={vals}"
+                        )
+                        print("[prefill] CHUNK DIFF:", msg, flush=True)
+                        try:
+                            log_path = self._get_prefill_log_path()
+                            os.makedirs(os.path.dirname(log_path), exist_ok=True)
+                            with open(log_path, "a") as fh:
+                                fh.write("[prefill] CHUNK DIFF: " + msg + "\n")
+                        except Exception:
+                            pass
+
+                        # raise with short message; diagnostics are in log
+                        raise AssertionError(f"tensor values differ at layer {li} tensor {ti} (max_diff={max_diff})")
+
+        # --- optional: compute full_outputs for assertion ---
+        full_outputs = None
+        if assert_chunk_equals_full:
+            # compute full outputs with explicit position_ids for determinism
+            total_len = context_tokens.shape[1]
+            try:
+                position_ids_full = torch.arange(0, total_len, device=context_tokens.device).unsqueeze(0)
+                full_outputs = self.model(
+                    context_tokens,
+                    past_key_values=None,
+                    position_ids=position_ids_full,
+                    use_cache=True,
+                    sparse_meta_data=sparse_meta_data,
+                )
+            except Exception:
+                # fallback if model doesn't accept explicit position_ids
+                full_outputs = self.model(
+                    context_tokens,
+                    past_key_values=None,
+                    use_cache=True,
+                    sparse_meta_data=sparse_meta_data,
+                )
+
+        # chunked prefill loop
+        total_len = context_tokens.shape[1]
+        past = None
+        chunked_outputs = None
+        if os.environ.get("SPARSE_DEBUG"):
+            print(f"[prefill] chunked prefill chunk_size={chunk_size} total_len={total_len}", flush=True)
+        for i in range(0, total_len, chunk_size):
+            chunk = context_tokens[:, i : i + chunk_size]
+            if os.environ.get("SPARSE_DEBUG"):
+                print(f"[prefill] chunk idx={i} chunk_shape={chunk.shape}", flush=True)
+            # pass explicit position_ids for each chunk to ensure absolute positions
+            try:
+                pos_ids = torch.arange(i, i + chunk.shape[1], device=chunk.device).unsqueeze(0)
+                chunked_outputs = self.model(
+                    chunk,
+                    past_key_values=(None if past is None else past),
+                    position_ids=pos_ids,
+                    use_cache=True,
+                    sparse_meta_data=sparse_meta_data,
+                )
+            except Exception:
+                chunked_outputs = self.model(
+                    chunk,
+                    past_key_values=(None if past is None else past),
+                    use_cache=True,
+                    sparse_meta_data=sparse_meta_data,
+                )
+            past = getattr(chunked_outputs, "past_key_values", None)
+
+        # optional assertion against full_outputs
+        if assert_chunk_equals_full and full_outputs is not None:
+            try:
+                _compare_past(getattr(full_outputs, "past_key_values", None), getattr(chunked_outputs, "past_key_values", None))
+                # also compare last-token logits with looser tolerance and cast to float
+                if hasattr(full_outputs, "logits") and hasattr(chunked_outputs, "logits"):
+                    f_last = full_outputs.logits[:, -1].float()
+                    c_last = chunked_outputs.logits[:, -1].float()
+                    if f_last.shape != c_last.shape or not torch.allclose(f_last, c_last, atol=1e-3, rtol=1e-3):
+                        raise AssertionError("final logits differ between full and chunked prefill")
+                # success: print/log OK for visibility when debug enabled
+                if os.environ.get("SPARSE_DEBUG"):
+                    ok_msg = f"[prefill] CHUNK ASSERT OK: chunk_size={chunk_size} total_len={total_len}"
+                    print(ok_msg, flush=True)
+                    try:
+                        log_path = self._get_prefill_log_path()
+                        with open(log_path, "a") as fh:
+                            fh.write(ok_msg + "\n")
+                    except Exception:
+                        pass
+            except AssertionError as e:
+                # re-raise to surface the error
+                raise
+
+        return chunked_outputs
+
     def process_request(
         self,
         request: Request,
@@ -127,20 +435,44 @@ class ModelAdapterHF(ModelAdapter):
         with torch.no_grad():
             for question in questions:
                 sparse_meta_data: Dict[str, Any] = {}
+                
+                # Store model's rotary_emb in sparse_meta_data for EXTEND_CONTEXT support
+                # This allows access to rotary_emb from attention layers
+                if self._sparse_attention_available and os.environ.get("EXTEND_CONTEXT", "0").lower() in ("1", "true", "yes"):
+                    # Try to find rotary_emb in the model
+                    if hasattr(self.model, "model") and hasattr(self.model.model, "rotary_emb"):
+                        sparse_meta_data["_rotary_emb"] = self.model.model.rotary_emb
+                    elif hasattr(self.model, "rotary_emb"):
+                        sparse_meta_data["_rotary_emb"] = self.model.rotary_emb
 
                 question_tokens = self.tokenizer.encode(question, return_tensors="pt")
                 if self.device is not None:
                     question_tokens = question_tokens.to(self.device)
 
-                context_outputs = self.model(
-                    context_tokens,
-                    past_key_values=None,
-                    use_cache=True,
-                    sparse_meta_data=sparse_meta_data,
-                )
+                # Check if chunked prefill is enabled
+                prefill_chunk_size = request_kwargs.get("prefill_chunk_size") or os.environ.get("PREFILL_CHUNK_SIZE")
+                chunk_size = None
+                if prefill_chunk_size is not None:
+                    try:
+                        chunk_size = int(prefill_chunk_size)
+                    except (ValueError, TypeError):
+                        chunk_size = None
+                if chunk_size is None or chunk_size <= 0:
+                    chunk_size = None
 
                 if self._sparse_attention_available:
                     with self.enable_sparse_mode():
+                        if chunk_size is not None:
+                            context_outputs = self._chunked_prefill_sparse(
+                                context_tokens, sparse_meta_data, chunk_size
+                            )
+                        else:
+                            context_outputs = self.model(
+                                context_tokens,
+                                past_key_values=None,
+                                use_cache=True,
+                                sparse_meta_data=sparse_meta_data,
+                            )
                         response_text = self._generate_response(
                             question_tokens,
                             context_outputs,
@@ -151,6 +483,18 @@ class ModelAdapterHF(ModelAdapter):
                         responses.append(response_text)
                 else:
                     # Dense-only mode: process questions with dense attention
+                    assert_chunk_equals_full = request_kwargs.get("assert_chunked_equals_full", True)
+                    if chunk_size is not None:
+                        context_outputs = self._chunked_prefill_dense(
+                            context_tokens, sparse_meta_data, chunk_size, assert_chunk_equals_full
+                        )
+                    else:
+                            context_outputs = self.model(
+                                context_tokens,
+                                past_key_values=None,
+                                use_cache=True,
+                                sparse_meta_data=sparse_meta_data,
+                            )
                     response_text = self._generate_response(
                         question_tokens,
                         context_outputs,
