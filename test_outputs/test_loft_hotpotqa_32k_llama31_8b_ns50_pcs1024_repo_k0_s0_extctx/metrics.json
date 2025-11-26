@@ -1,0 +1,40 @@
+{
+  "dense": {
+    "overall": {
+      "em": 0.44,
+      "subspan_em": 0.46,
+      "f1": 0.518
+    },
+    "task_metrics": {
+      "hotpotqa_32k": {
+        "em": 0.44,
+        "subspan_em": 0.46,
+        "f1": 0.518,
+        "num_samples": 50
+      }
+    },
+    "summary": {
+      "total_tasks": 1,
+      "total_samples": 50
+    }
+  },
+  "sparse_chunked": {
+    "overall": {
+      "em": 0.46,
+      "subspan_em": 0.5,
+      "f1": 0.5254
+    },
+    "task_metrics": {
+      "hotpotqa_32k": {
+        "em": 0.46,
+        "subspan_em": 0.5,
+        "f1": 0.5254,
+        "num_samples": 50
+      }
+    },
+    "summary": {
+      "total_tasks": 1,
+      "total_samples": 50
+    }
+  }
+}

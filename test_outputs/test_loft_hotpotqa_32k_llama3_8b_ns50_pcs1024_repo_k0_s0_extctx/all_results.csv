@@ -1,0 +1,362 @@
+method,sample_idx,task,question,response,elapsed_s,error
+dense,0,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+.",14.242639303207397,
+sparse_chunked,0,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", [the answer is not found in the,298.92918252944946,
+dense,1,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. The: |
+: |
+:",15.22725224494934,
+sparse_chunked,1,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['Fabulous Thunderbirds', 'T",303.9571461677551,
+dense,2,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3: |
+: |
+: |
+:",15.483052968978882,
+sparse_chunked,2,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['The Greatest Game Ever Played']
+======",301.78825211524963,
+dense,3,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","0: |
+: |
+
+The: |
+",15.149754047393799,
+sparse_chunked,3,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri",470,291.52523374557495,
+dense,4,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. The: |
+: |
+:",15.08970594406128,
+sparse_chunked,4,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['No, the 1994 film",300.72263526916504,
+dense,5,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3: |
+: |
+: |
+:",14.84293532371521,
+sparse_chunked,5,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri",assistantassistantassistant,301.2605822086334,
+dense,6,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3: |
+: |
+: |
+:",15.39504623413086,
+sparse_chunked,6,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['none']
+=====",300.72986936569214,
+dense,7,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+.",15.038853168487549,
+sparse_chunked,7,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri",21 September 2014,299.1607048511505,
+dense,8,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","30: |
+: The: |
+:",15.145097970962524,
+sparse_chunked,8,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," [NHL, 456",299.8862452507019,
+dense,9,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+.",15.179931163787842,
+sparse_chunked,9,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['orange-flavored soft drinks']
+=====",302.56319642066956,
+dense,10,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+.",15.209316968917847,
+sparse_chunked,10,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", [the answer is not found],302.1053845882416,
+dense,11,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. The: |
+: |
+:",15.027966260910034,
+sparse_chunked,11,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", [La Machine à écrire | ID,302.4833300113678,
+dense,12,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+. |
+: |
+:",15.195655107498169,
+sparse_chunked,12,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","2012
+Final Answer: ['200",307.2494056224823,
+dense,13,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+.",15.013181924819946,
+sparse_chunked,13,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", ['Moses',296.2596733570099,
+dense,14,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. The: |
+: |
+:",14.986971139907837,
+sparse_chunked,14,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['English Civil War']
+=====",298.2210350036621,
+dense,15,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+. |
+: |
+:",14.960669040679932,
+sparse_chunked,15,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", ['none of the 1990s,300.83741760253906,
+dense,16,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3: |
+: |
+: |
+:",14.687922239303589,
+sparse_chunked,16,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", [The Georgia World Congress Center],306.7597334384918,
+dense,17,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. The: |
+: |
+:",15.020187377929688,
+sparse_chunked,17,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri",assistantassistantassistant,300.6572701931,
+dense,18,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","2: |
+
+The: The: |
+",15.44295358657837,
+sparse_chunked,18,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", [TITLE: The Man with the Iron,299.624431848526,
+dense,19,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+. |
+:",15.158523321151733,
+sparse_chunked,19,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", ['Texas Tech'],298.87679982185364,
+dense,20,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+
+The",15.333028793334961,
+sparse_chunked,20,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri",157,294.35833740234375,
+dense,21,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","2. |
+
+The. |
+
+The.",15.1627357006073,
+sparse_chunked,21,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", [the 1959,298.05382895469666,
+dense,22,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+.",15.00440526008606,
+sparse_chunked,22,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri",1999 Galtür avalanche,297.8911008834839,
+dense,23,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+:",15.005674362182617,
+sparse_chunked,23,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", [ID: 10,297.4650113582611,
+dense,24,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+. |
+:",15.409412622451782,
+sparse_chunked,24,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri",137,289.0791049003601,
+dense,25,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+. |
+. |
+:",14.874344825744629,
+sparse_chunked,25,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['none']
+======",296.6678566932678,
+dense,26,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3: |
+: |
+: |
+:",16.114588499069214,
+sparse_chunked,26,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", ['Morgan Llywelyn',299.6118142604828,
+dense,27,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+:",15.323487997055054,
+sparse_chunked,27,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['Pablo Alboratory']
+======",301.9526090621948,
+dense,28,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+. |
+: |
+:",15.600071907043457,
+sparse_chunked,28,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['Phoenix 1983']
+=====",298.2987871170044,
+dense,29,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3: |
+: |
+: |
+:",14.966920852661133,
+sparse_chunked,29,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri",165,289.265611410141,
+dense,30,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+. |
+:",15.232993841171265,
+sparse_chunked,30,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['Cambridge University']
+======",298.24420189857483,
+dense,31,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+.",15.238247156143188,
+sparse_chunked,31,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri",40 million copies,290.3660264015198,
+dense,32,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+. |
+:",14.787650108337402,
+sparse_chunked,32,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['Tina Fey']
+=====",297.675164937973,
+dense,33,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+.",14.833018779754639,
+sparse_chunked,33,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['Roland TR-8']
+======",299.1655225753784,
+dense,34,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+
+The",15.048715591430664,
+sparse_chunked,34,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", [The Vanishing Point of the ,304.64974784851074,
+dense,35,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3: |
+: |
+: |
+:",15.26934266090393,
+sparse_chunked,35,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['none']
+=====",294.12968039512634,
+dense,36,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. The: |
+: |
+:",15.139419317245483,
+sparse_chunked,36,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", ['none of the following',296.9964597225189,
+dense,37,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3: |
+: |
+: |
+:",15.222446203231812,
+sparse_chunked,37,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['Parks and Recreation']
+=====",297.5050187110901,
+dense,38,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3: |
+: |
+: |
+:",15.88077187538147,
+sparse_chunked,38,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['yes']
+======",296.94685792922974,
+dense,39,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+:",15.47518539428711,
+sparse_chunked,39,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['Pierre's ""La Bohème",298.97748732566833,
+dense,40,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+.",16.21140217781067,
+sparse_chunked,40,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", ['Aholdings',295.87663865089417,
+dense,41,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. The: |
+: |
+:",15.227473497390747,
+sparse_chunked,41,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri",148,295.65753960609436,
+dense,42,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3: |
+: |
+: |
+:",15.299725770950317,
+sparse_chunked,42,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", ['Pirates of the Caribbean',307.45925116539,
+dense,43,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+:",15.796032667160034,
+sparse_chunked,43,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", ['Wing Chun',293.98703122138977,
+dense,44,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+. |
+.",15.299985647201538,
+sparse_chunked,44,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", [The Column of the Column of the,297.56292748451233,
+dense,45,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+. |
+. |
+:",15.44377875328064,
+sparse_chunked,45,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri"," ['Omega Pharma']
+======",301.29998087882996,
+dense,46,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+. |
+: |
+:",15.734129190444946,
+sparse_chunked,46,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri",3,290.13066267967224,
+dense,47,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+:",15.070756196975708,
+sparse_chunked,47,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri",61,291.521183013916,
+dense,48,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. |
+: |
+: |
+:",14.8683443069458,
+sparse_chunked,48,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri", ['Lawton Chiles'],300.5388557910919,
+dense,49,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","3. The: |
+: |
+:",15.3288414478302,
+sparse_chunked,49,hotpotqa_32k,"====== Now let's start! ======
+Based on the documents above, can you answer the following query? Pri","1989
+=====",294.8964989185333,

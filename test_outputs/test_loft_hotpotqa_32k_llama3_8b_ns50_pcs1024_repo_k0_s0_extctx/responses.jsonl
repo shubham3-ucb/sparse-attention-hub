@@ -1,0 +1,100 @@
+{"timestamp": "2025-11-26 10:07:45", "scenario": "dense", "sample_idx": 0, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n.", "elapsed_s": 14.242639303207397}
+{"timestamp": "2025-11-26 10:12:44", "scenario": "sparse_chunked", "sample_idx": 0, "task": "hotpotqa_32k", "response": " [the answer is not found in the", "elapsed_s": 298.92918252944946}
+{"timestamp": "2025-11-26 10:13:00", "scenario": "dense", "sample_idx": 1, "task": "hotpotqa_32k", "response": "3. The: |\n: |\n:", "elapsed_s": 15.22725224494934}
+{"timestamp": "2025-11-26 10:18:04", "scenario": "sparse_chunked", "sample_idx": 1, "task": "hotpotqa_32k", "response": " ['Fabulous Thunderbirds', 'T", "elapsed_s": 303.9571461677551}
+{"timestamp": "2025-11-26 10:18:19", "scenario": "dense", "sample_idx": 2, "task": "hotpotqa_32k", "response": "3: |\n: |\n: |\n:", "elapsed_s": 15.483052968978882}
+{"timestamp": "2025-11-26 10:23:21", "scenario": "sparse_chunked", "sample_idx": 2, "task": "hotpotqa_32k", "response": " ['The Greatest Game Ever Played']\n======", "elapsed_s": 301.78825211524963}
+{"timestamp": "2025-11-26 10:23:38", "scenario": "dense", "sample_idx": 3, "task": "hotpotqa_32k", "response": "0: |\n: |\n\nThe: |\n", "elapsed_s": 15.149754047393799}
+{"timestamp": "2025-11-26 10:28:30", "scenario": "sparse_chunked", "sample_idx": 3, "task": "hotpotqa_32k", "response": "470", "elapsed_s": 291.52523374557495}
+{"timestamp": "2025-11-26 10:28:45", "scenario": "dense", "sample_idx": 4, "task": "hotpotqa_32k", "response": "3. The: |\n: |\n:", "elapsed_s": 15.08970594406128}
+{"timestamp": "2025-11-26 10:33:46", "scenario": "sparse_chunked", "sample_idx": 4, "task": "hotpotqa_32k", "response": " ['No, the 1994 film", "elapsed_s": 300.72263526916504}
+{"timestamp": "2025-11-26 10:34:03", "scenario": "dense", "sample_idx": 5, "task": "hotpotqa_32k", "response": "3: |\n: |\n: |\n:", "elapsed_s": 14.84293532371521}
+{"timestamp": "2025-11-26 10:39:04", "scenario": "sparse_chunked", "sample_idx": 5, "task": "hotpotqa_32k", "response": "assistantassistantassistant", "elapsed_s": 301.2605822086334}
+{"timestamp": "2025-11-26 10:39:20", "scenario": "dense", "sample_idx": 6, "task": "hotpotqa_32k", "response": "3: |\n: |\n: |\n:", "elapsed_s": 15.39504623413086}
+{"timestamp": "2025-11-26 10:44:20", "scenario": "sparse_chunked", "sample_idx": 6, "task": "hotpotqa_32k", "response": " ['none']\n=====", "elapsed_s": 300.72986936569214}
+{"timestamp": "2025-11-26 10:44:36", "scenario": "dense", "sample_idx": 7, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n.", "elapsed_s": 15.038853168487549}
+{"timestamp": "2025-11-26 10:49:35", "scenario": "sparse_chunked", "sample_idx": 7, "task": "hotpotqa_32k", "response": "21 September 2014", "elapsed_s": 299.1607048511505}
+{"timestamp": "2025-11-26 10:49:50", "scenario": "dense", "sample_idx": 8, "task": "hotpotqa_32k", "response": "30: |\n: The: |\n:", "elapsed_s": 15.145097970962524}
+{"timestamp": "2025-11-26 10:54:50", "scenario": "sparse_chunked", "sample_idx": 8, "task": "hotpotqa_32k", "response": " [NHL, 456", "elapsed_s": 299.8862452507019}
+{"timestamp": "2025-11-26 10:55:05", "scenario": "dense", "sample_idx": 9, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n.", "elapsed_s": 15.179931163787842}
+{"timestamp": "2025-11-26 11:00:08", "scenario": "sparse_chunked", "sample_idx": 9, "task": "hotpotqa_32k", "response": " ['orange-flavored soft drinks']\n=====", "elapsed_s": 302.56319642066956}
+{"timestamp": "2025-11-26 11:00:25", "scenario": "dense", "sample_idx": 10, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n.", "elapsed_s": 15.209316968917847}
+{"timestamp": "2025-11-26 11:05:27", "scenario": "sparse_chunked", "sample_idx": 10, "task": "hotpotqa_32k", "response": " [the answer is not found]", "elapsed_s": 302.1053845882416}
+{"timestamp": "2025-11-26 11:05:42", "scenario": "dense", "sample_idx": 11, "task": "hotpotqa_32k", "response": "3. The: |\n: |\n:", "elapsed_s": 15.027966260910034}
+{"timestamp": "2025-11-26 11:10:45", "scenario": "sparse_chunked", "sample_idx": 11, "task": "hotpotqa_32k", "response": " [La Machine \u00e0 \u00e9crire | ID", "elapsed_s": 302.4833300113678}
+{"timestamp": "2025-11-26 11:11:00", "scenario": "dense", "sample_idx": 12, "task": "hotpotqa_32k", "response": "3. |\n. |\n: |\n:", "elapsed_s": 15.195655107498169}
+{"timestamp": "2025-11-26 11:16:07", "scenario": "sparse_chunked", "sample_idx": 12, "task": "hotpotqa_32k", "response": "2012\nFinal Answer: ['200", "elapsed_s": 307.2494056224823}
+{"timestamp": "2025-11-26 11:16:25", "scenario": "dense", "sample_idx": 13, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n.", "elapsed_s": 15.013181924819946}
+{"timestamp": "2025-11-26 11:21:21", "scenario": "sparse_chunked", "sample_idx": 13, "task": "hotpotqa_32k", "response": " ['Moses'", "elapsed_s": 296.2596733570099}
+{"timestamp": "2025-11-26 11:21:39", "scenario": "dense", "sample_idx": 14, "task": "hotpotqa_32k", "response": "3. The: |\n: |\n:", "elapsed_s": 14.986971139907837}
+{"timestamp": "2025-11-26 11:26:37", "scenario": "sparse_chunked", "sample_idx": 14, "task": "hotpotqa_32k", "response": " ['English Civil War']\n=====", "elapsed_s": 298.2210350036621}
+{"timestamp": "2025-11-26 11:26:54", "scenario": "dense", "sample_idx": 15, "task": "hotpotqa_32k", "response": "3. |\n. |\n: |\n:", "elapsed_s": 14.960669040679932}
+{"timestamp": "2025-11-26 11:31:55", "scenario": "sparse_chunked", "sample_idx": 15, "task": "hotpotqa_32k", "response": " ['none of the 1990s", "elapsed_s": 300.83741760253906}
+{"timestamp": "2025-11-26 11:32:10", "scenario": "dense", "sample_idx": 16, "task": "hotpotqa_32k", "response": "3: |\n: |\n: |\n:", "elapsed_s": 14.687922239303589}
+{"timestamp": "2025-11-26 11:37:17", "scenario": "sparse_chunked", "sample_idx": 16, "task": "hotpotqa_32k", "response": " [The Georgia World Congress Center]", "elapsed_s": 306.7597334384918}
+{"timestamp": "2025-11-26 11:37:34", "scenario": "dense", "sample_idx": 17, "task": "hotpotqa_32k", "response": "3. The: |\n: |\n:", "elapsed_s": 15.020187377929688}
+{"timestamp": "2025-11-26 11:42:35", "scenario": "sparse_chunked", "sample_idx": 17, "task": "hotpotqa_32k", "response": "assistantassistantassistant", "elapsed_s": 300.6572701931}
+{"timestamp": "2025-11-26 11:42:51", "scenario": "dense", "sample_idx": 18, "task": "hotpotqa_32k", "response": "2: |\n\nThe: The: |\n", "elapsed_s": 15.44295358657837}
+{"timestamp": "2025-11-26 11:47:50", "scenario": "sparse_chunked", "sample_idx": 18, "task": "hotpotqa_32k", "response": " [TITLE: The Man with the Iron", "elapsed_s": 299.624431848526}
+{"timestamp": "2025-11-26 11:48:06", "scenario": "dense", "sample_idx": 19, "task": "hotpotqa_32k", "response": "3. |\n: |\n. |\n:", "elapsed_s": 15.158523321151733}
+{"timestamp": "2025-11-26 11:53:04", "scenario": "sparse_chunked", "sample_idx": 19, "task": "hotpotqa_32k", "response": " ['Texas Tech']", "elapsed_s": 298.87679982185364}
+{"timestamp": "2025-11-26 11:53:20", "scenario": "dense", "sample_idx": 20, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n\nThe", "elapsed_s": 15.333028793334961}
+{"timestamp": "2025-11-26 11:58:14", "scenario": "sparse_chunked", "sample_idx": 20, "task": "hotpotqa_32k", "response": "157", "elapsed_s": 294.35833740234375}
+{"timestamp": "2025-11-26 11:58:30", "scenario": "dense", "sample_idx": 21, "task": "hotpotqa_32k", "response": "2. |\n\nThe. |\n\nThe.", "elapsed_s": 15.1627357006073}
+{"timestamp": "2025-11-26 12:03:28", "scenario": "sparse_chunked", "sample_idx": 21, "task": "hotpotqa_32k", "response": " [the 1959", "elapsed_s": 298.05382895469666}
+{"timestamp": "2025-11-26 12:03:44", "scenario": "dense", "sample_idx": 22, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n.", "elapsed_s": 15.00440526008606}
+{"timestamp": "2025-11-26 12:08:42", "scenario": "sparse_chunked", "sample_idx": 22, "task": "hotpotqa_32k", "response": "1999 Galt\u00fcr avalanche", "elapsed_s": 297.8911008834839}
+{"timestamp": "2025-11-26 12:08:59", "scenario": "dense", "sample_idx": 23, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n:", "elapsed_s": 15.005674362182617}
+{"timestamp": "2025-11-26 12:13:56", "scenario": "sparse_chunked", "sample_idx": 23, "task": "hotpotqa_32k", "response": " [ID: 10", "elapsed_s": 297.4650113582611}
+{"timestamp": "2025-11-26 12:14:12", "scenario": "dense", "sample_idx": 24, "task": "hotpotqa_32k", "response": "3. |\n: |\n. |\n:", "elapsed_s": 15.409412622451782}
+{"timestamp": "2025-11-26 12:19:01", "scenario": "sparse_chunked", "sample_idx": 24, "task": "hotpotqa_32k", "response": "137", "elapsed_s": 289.0791049003601}
+{"timestamp": "2025-11-26 12:19:16", "scenario": "dense", "sample_idx": 25, "task": "hotpotqa_32k", "response": "3. |\n. |\n. |\n:", "elapsed_s": 14.874344825744629}
+{"timestamp": "2025-11-26 12:24:13", "scenario": "sparse_chunked", "sample_idx": 25, "task": "hotpotqa_32k", "response": " ['none']\n======", "elapsed_s": 296.6678566932678}
+{"timestamp": "2025-11-26 12:24:29", "scenario": "dense", "sample_idx": 26, "task": "hotpotqa_32k", "response": "3: |\n: |\n: |\n:", "elapsed_s": 16.114588499069214}
+{"timestamp": "2025-11-26 12:29:32", "scenario": "sparse_chunked", "sample_idx": 26, "task": "hotpotqa_32k", "response": " ['Morgan Llywelyn'", "elapsed_s": 299.6118142604828}
+{"timestamp": "2025-11-26 12:29:47", "scenario": "dense", "sample_idx": 27, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n:", "elapsed_s": 15.323487997055054}
+{"timestamp": "2025-11-26 12:34:49", "scenario": "sparse_chunked", "sample_idx": 27, "task": "hotpotqa_32k", "response": " ['Pablo Alboratory']\n======", "elapsed_s": 301.9526090621948}
+{"timestamp": "2025-11-26 12:35:04", "scenario": "dense", "sample_idx": 28, "task": "hotpotqa_32k", "response": "3. |\n. |\n: |\n:", "elapsed_s": 15.600071907043457}
+{"timestamp": "2025-11-26 12:40:05", "scenario": "sparse_chunked", "sample_idx": 28, "task": "hotpotqa_32k", "response": " ['Phoenix 1983']\n=====", "elapsed_s": 298.2987871170044}
+{"timestamp": "2025-11-26 12:40:20", "scenario": "dense", "sample_idx": 29, "task": "hotpotqa_32k", "response": "3: |\n: |\n: |\n:", "elapsed_s": 14.966920852661133}
+{"timestamp": "2025-11-26 12:45:09", "scenario": "sparse_chunked", "sample_idx": 29, "task": "hotpotqa_32k", "response": "165", "elapsed_s": 289.265611410141}
+{"timestamp": "2025-11-26 12:45:27", "scenario": "dense", "sample_idx": 30, "task": "hotpotqa_32k", "response": "3. |\n: |\n. |\n:", "elapsed_s": 15.232993841171265}
+{"timestamp": "2025-11-26 12:50:25", "scenario": "sparse_chunked", "sample_idx": 30, "task": "hotpotqa_32k", "response": " ['Cambridge University']\n======", "elapsed_s": 298.24420189857483}
+{"timestamp": "2025-11-26 12:50:40", "scenario": "dense", "sample_idx": 31, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n.", "elapsed_s": 15.238247156143188}
+{"timestamp": "2025-11-26 12:55:31", "scenario": "sparse_chunked", "sample_idx": 31, "task": "hotpotqa_32k", "response": "40 million copies", "elapsed_s": 290.3660264015198}
+{"timestamp": "2025-11-26 12:55:48", "scenario": "dense", "sample_idx": 32, "task": "hotpotqa_32k", "response": "3. |\n: |\n. |\n:", "elapsed_s": 14.787650108337402}
+{"timestamp": "2025-11-26 13:00:46", "scenario": "sparse_chunked", "sample_idx": 32, "task": "hotpotqa_32k", "response": " ['Tina Fey']\n=====", "elapsed_s": 297.675164937973}
+{"timestamp": "2025-11-26 13:01:01", "scenario": "dense", "sample_idx": 33, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n.", "elapsed_s": 14.833018779754639}
+{"timestamp": "2025-11-26 13:06:00", "scenario": "sparse_chunked", "sample_idx": 33, "task": "hotpotqa_32k", "response": " ['Roland TR-8']\n======", "elapsed_s": 299.1655225753784}
+{"timestamp": "2025-11-26 13:06:15", "scenario": "dense", "sample_idx": 34, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n\nThe", "elapsed_s": 15.048715591430664}
+{"timestamp": "2025-11-26 13:11:20", "scenario": "sparse_chunked", "sample_idx": 34, "task": "hotpotqa_32k", "response": " [The Vanishing Point of the ", "elapsed_s": 304.64974784851074}
+{"timestamp": "2025-11-26 13:11:35", "scenario": "dense", "sample_idx": 35, "task": "hotpotqa_32k", "response": "3: |\n: |\n: |\n:", "elapsed_s": 15.26934266090393}
+{"timestamp": "2025-11-26 13:16:29", "scenario": "sparse_chunked", "sample_idx": 35, "task": "hotpotqa_32k", "response": " ['none']\n=====", "elapsed_s": 294.12968039512634}
+{"timestamp": "2025-11-26 13:16:44", "scenario": "dense", "sample_idx": 36, "task": "hotpotqa_32k", "response": "3. The: |\n: |\n:", "elapsed_s": 15.139419317245483}
+{"timestamp": "2025-11-26 13:21:41", "scenario": "sparse_chunked", "sample_idx": 36, "task": "hotpotqa_32k", "response": " ['none of the following'", "elapsed_s": 296.9964597225189}
+{"timestamp": "2025-11-26 13:21:57", "scenario": "dense", "sample_idx": 37, "task": "hotpotqa_32k", "response": "3: |\n: |\n: |\n:", "elapsed_s": 15.222446203231812}
+{"timestamp": "2025-11-26 13:26:54", "scenario": "sparse_chunked", "sample_idx": 37, "task": "hotpotqa_32k", "response": " ['Parks and Recreation']\n=====", "elapsed_s": 297.5050187110901}
+{"timestamp": "2025-11-26 13:27:10", "scenario": "dense", "sample_idx": 38, "task": "hotpotqa_32k", "response": "3: |\n: |\n: |\n:", "elapsed_s": 15.88077187538147}
+{"timestamp": "2025-11-26 13:32:07", "scenario": "sparse_chunked", "sample_idx": 38, "task": "hotpotqa_32k", "response": " ['yes']\n======", "elapsed_s": 296.94685792922974}
+{"timestamp": "2025-11-26 13:32:23", "scenario": "dense", "sample_idx": 39, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n:", "elapsed_s": 15.47518539428711}
+{"timestamp": "2025-11-26 13:37:22", "scenario": "sparse_chunked", "sample_idx": 39, "task": "hotpotqa_32k", "response": " ['Pierre's \"La Boh\u00e8me", "elapsed_s": 298.97748732566833}
+{"timestamp": "2025-11-26 13:37:38", "scenario": "dense", "sample_idx": 40, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n.", "elapsed_s": 16.21140217781067}
+{"timestamp": "2025-11-26 13:42:36", "scenario": "sparse_chunked", "sample_idx": 40, "task": "hotpotqa_32k", "response": " ['Aholdings'", "elapsed_s": 295.87663865089417}
+{"timestamp": "2025-11-26 13:42:52", "scenario": "dense", "sample_idx": 41, "task": "hotpotqa_32k", "response": "3. The: |\n: |\n:", "elapsed_s": 15.227473497390747}
+{"timestamp": "2025-11-26 13:47:47", "scenario": "sparse_chunked", "sample_idx": 41, "task": "hotpotqa_32k", "response": "148", "elapsed_s": 295.65753960609436}
+{"timestamp": "2025-11-26 13:48:03", "scenario": "dense", "sample_idx": 42, "task": "hotpotqa_32k", "response": "3: |\n: |\n: |\n:", "elapsed_s": 15.299725770950317}
+{"timestamp": "2025-11-26 13:53:10", "scenario": "sparse_chunked", "sample_idx": 42, "task": "hotpotqa_32k", "response": " ['Pirates of the Caribbean'", "elapsed_s": 307.45925116539}
+{"timestamp": "2025-11-26 13:53:26", "scenario": "dense", "sample_idx": 43, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n:", "elapsed_s": 15.796032667160034}
+{"timestamp": "2025-11-26 13:58:20", "scenario": "sparse_chunked", "sample_idx": 43, "task": "hotpotqa_32k", "response": " ['Wing Chun'", "elapsed_s": 293.98703122138977}
+{"timestamp": "2025-11-26 13:58:35", "scenario": "dense", "sample_idx": 44, "task": "hotpotqa_32k", "response": "3. |\n: |\n. |\n.", "elapsed_s": 15.299985647201538}
+{"timestamp": "2025-11-26 14:03:33", "scenario": "sparse_chunked", "sample_idx": 44, "task": "hotpotqa_32k", "response": " [The Column of the Column of the", "elapsed_s": 297.56292748451233}
+{"timestamp": "2025-11-26 14:03:48", "scenario": "dense", "sample_idx": 45, "task": "hotpotqa_32k", "response": "3. |\n. |\n. |\n:", "elapsed_s": 15.44377875328064}
+{"timestamp": "2025-11-26 14:08:50", "scenario": "sparse_chunked", "sample_idx": 45, "task": "hotpotqa_32k", "response": " ['Omega Pharma']\n======", "elapsed_s": 301.29998087882996}
+{"timestamp": "2025-11-26 14:09:05", "scenario": "dense", "sample_idx": 46, "task": "hotpotqa_32k", "response": "3. |\n. |\n: |\n:", "elapsed_s": 15.734129190444946}
+{"timestamp": "2025-11-26 14:13:58", "scenario": "sparse_chunked", "sample_idx": 46, "task": "hotpotqa_32k", "response": "3", "elapsed_s": 290.13066267967224}
+{"timestamp": "2025-11-26 14:14:13", "scenario": "dense", "sample_idx": 47, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n:", "elapsed_s": 15.070756196975708}
+{"timestamp": "2025-11-26 14:19:05", "scenario": "sparse_chunked", "sample_idx": 47, "task": "hotpotqa_32k", "response": "61", "elapsed_s": 291.521183013916}
+{"timestamp": "2025-11-26 14:19:20", "scenario": "dense", "sample_idx": 48, "task": "hotpotqa_32k", "response": "3. |\n: |\n: |\n:", "elapsed_s": 14.8683443069458}
+{"timestamp": "2025-11-26 14:24:20", "scenario": "sparse_chunked", "sample_idx": 48, "task": "hotpotqa_32k", "response": " ['Lawton Chiles']", "elapsed_s": 300.5388557910919}
+{"timestamp": "2025-11-26 14:24:36", "scenario": "dense", "sample_idx": 49, "task": "hotpotqa_32k", "response": "3. The: |\n: |\n:", "elapsed_s": 15.3288414478302}
+{"timestamp": "2025-11-26 14:29:33", "scenario": "sparse_chunked", "sample_idx": 49, "task": "hotpotqa_32k", "response": "1989\n=====", "elapsed_s": 294.8964989185333}
