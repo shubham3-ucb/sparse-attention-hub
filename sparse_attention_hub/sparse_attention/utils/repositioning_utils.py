@@ -196,7 +196,8 @@ def _apply_position_reassignment(
         if prefix_scale_alpha > 1.0:
             prefix_scale_alpha = 1.0
         # Hard cap: max allowed position id (inclusive)
-        max_position_id_allowed: int = int(kwargs.get("max_position_id", DEFAULT_MAX_POSITION_ID))
+        # ALWAYS use DEFAULT_MAX_POSITION_ID=8192 - DO NOT allow override via kwargs
+        max_position_id_allowed: int = DEFAULT_MAX_POSITION_ID
         assert max_position_id_allowed >= 0, "[FATAL] max_position_id must be non-negative"
         # Two-band scaling controls
         use_two_band_prefix_scaling: bool = bool(
