@@ -535,7 +535,7 @@ def get_masked_attention_output(
             dropout=dropout,
             training=training,
             kwargs=kwargs,
-        )
+    )
 
     # Prepare values by applying key-value grouping
     num_key_value_groups: int = _get_num_key_value_groups(queries, values)

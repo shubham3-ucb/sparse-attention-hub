@@ -489,12 +489,12 @@ class ModelAdapterHF(ModelAdapter):
                             context_tokens, sparse_meta_data, chunk_size, assert_chunk_equals_full
                         )
                     else:
-                            context_outputs = self.model(
-                                context_tokens,
-                                past_key_values=None,
-                                use_cache=True,
-                                sparse_meta_data=sparse_meta_data,
-                            )
+                        context_outputs = self.model(
+                            context_tokens,
+                            past_key_values=None,
+                            use_cache=True,
+                            sparse_meta_data=sparse_meta_data,
+                        )
                     response_text = self._generate_response(
                         question_tokens,
                         context_outputs,
