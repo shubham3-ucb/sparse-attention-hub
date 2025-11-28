@@ -3,8 +3,8 @@
 set -euo pipefail
 
 export MODEL_NAME="meta-llama/Meta-Llama-3-8B-Instruct"
-export NUM_SAMPLES=3
-export PREFILL_CHUNK_SIZE=1024
+export NUM_SAMPLES=30
+export PREFILL_CHUNK_SIZE=512
 
 # Sparse attention parameters
 export ORACLE_TOPK_HEAVY_SIZE=0.10
@@ -17,6 +17,7 @@ export NUM_SINK_TOKENS=0
 export PREFIX_FREEZE_TAIL_K=0
 export EXTEND_CONTEXT=1
 export COMPARE_MASK_ROPED_VS_UNROPED=1
+export REPEAT_COUNT=5
 
 # Debug
 export SPARSE_DEBUG=0
@@ -28,6 +29,7 @@ echo "Model: $MODEL_NAME"
 echo "Samples: $NUM_SAMPLES"
 echo "Chunk size: $PREFILL_CHUNK_SIZE"
 echo "Repositioning: K=0, S=0"
+echo "Repeat count: $REPEAT_COUNT"
 echo "=========================================="
 
 cd "$(dirname "$0")/.."

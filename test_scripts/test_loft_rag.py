@@ -50,8 +50,195 @@ from sparse_attention_hub.metric_logging.logger import MicroMetricLogger
 from benchmark.benchmark_registry import create_benchmark_instance
 
 
+def convert_loft_to_simple_format(context: str, question: str, answer_prefix: str) -> tuple[str, str, str]:
+    """Convert LOFT format to simple HotpotQA-style format.
+    
+    Extracts query text and corpus documents, formats using HotpotQA template.
+    This improves compatibility with chat templates and model understanding.
+    
+    Args:
+        context: LOFT context (corpus docs + few-shot examples)
+        question: LOFT question format ("====== Now let's start! ======\nquery: <text>")
+        answer_prefix: Answer prefix (e.g., "Final Answer: ")
+    
+    Returns:
+        Tuple of (converted_context, converted_question, answer_prefix)
+        - converted_context: HotpotQA-style formatted context with corpus docs
+        - converted_question: Simple "Question: <query>\n" format
+        - answer_prefix: Unchanged (for LOFT metrics compatibility)
+    """
+    # Extract query text from LOFT question format
+    # Format: "====== Now let's start! ======\nquery: <query_text>"
+    query_text = ""
+    
+    # Strategy 1: Look for "query:" marker
+    query_marker = "query:"
+    query_marker_lower = query_marker.lower()
+    question_lower = question.lower()
+    
+    if query_marker_lower in question_lower:
+        # Find position of "query:" marker
+        marker_idx = question_lower.find(query_marker_lower)
+        # Extract text after "query:" (skip the marker and any whitespace)
+        query_text = question[marker_idx + len(query_marker):].strip()
+        # Remove any trailing newlines/whitespace
+        query_text = query_text.strip()
+    else:
+        # Fallback: Look for separator and extract everything after it
+        separator = "====== Now let's start! ======"
+        if separator in question:
+            separator_idx = question.find(separator)
+            query_text = question[separator_idx + len(separator):].strip()
+            # Remove "query:" if present
+            if query_text.lower().startswith("query:"):
+                query_text = query_text[6:].strip()
+        else:
+            # Last resort: use question as-is (shouldn't happen with proper LOFT format)
+            query_text = question.strip()
+    
+    if not query_text:
+        # If we couldn't extract query, use original question (fallback)
+        query_text = question.strip()
+    
+    # Extract corpus documents from LOFT context
+    # LOFT context structure:
+    # 1. Corpus instruction ("You will be given a list of documents...")
+    # 2. Formatting instruction ("Your final answer should be in a list...")
+    # 3. Corpus documents (ID: 0 | TITLE: ... | CONTENT: ... | END ID: 0)
+    # 4. Few-shot examples ("====== Example 1 ======" ... "====== Example 5 ======")
+    #
+    # We need to extract ONLY the corpus documents (part 3), removing:
+    # - Corpus instruction
+    # - Formatting instruction  
+    # - Few-shot examples
+    
+    corpus_docs = ""
+    
+    # Strategy: Find where corpus documents start and end
+    # Corpus documents start after the formatting instruction (which ends with "Final Answer: ['answer']")
+    # Corpus documents end before the first few-shot example ("====== Example 1 ======")
+    
+    # Find the start of corpus documents
+    # Look for the first "ID: 0 |" pattern (or "ID: " pattern)
+    corpus_start_marker = "ID: "
+    corpus_start_idx = context.find(corpus_start_marker)
+    
+    if corpus_start_idx == -1:
+        # Fallback: if no ID marker found, try to find where documents might start
+        # Look for common document patterns
+        corpus_start_idx = 0
+    
+    # Find the end of corpus documents (start of few-shot examples)
+    few_shot_marker = "====== Example 1 ======"
+    corpus_end_idx = context.find(few_shot_marker)
+    
+    if corpus_end_idx == -1:
+        # Fallback: look for other few-shot patterns
+        few_shot_alt = "\n====== Example"
+        corpus_end_idx = context.find(few_shot_alt)
+    
+    if corpus_end_idx == -1:
+        # If no few-shot examples found, use entire context after corpus_start_idx
+        # But warn - this means few-shot examples might be included
+        print(f"  ⚠️  Warning: Few-shot marker not found, using context from ID marker onwards")
+        corpus_docs = context[corpus_start_idx:].strip()
+    else:
+        # Extract corpus documents (between start and end)
+        corpus_docs = context[corpus_start_idx:corpus_end_idx].strip()
+    
+    # Clean up: remove any trailing newlines/whitespace
+    corpus_docs = corpus_docs.strip()
+    
+    # CRITICAL FIX: Remove ID markers to prevent model confusion
+    # LOFT format: "ID: X | TITLE: ... | CONTENT: ... | END ID: X"
+    # Model was outputting document IDs (like "430") instead of answers
+    # Remove ID markers and convert to simple format: "TITLE: ...\nCONTENT: ..."
+    import re
+    # Pattern: "ID: X | TITLE: ... | CONTENT: ... | END ID: X"
+    # Replace with: "TITLE: ...\nCONTENT: ...\n"
+    corpus_docs_cleaned = re.sub(
+        r'ID: \d+ \| ',  # Remove "ID: X | "
+        '',
+        corpus_docs
+    )
+    corpus_docs_cleaned = re.sub(
+        r' \| END ID: \d+',  # Remove " | END ID: X"
+        '',
+        corpus_docs_cleaned
+    )
+    # Also clean up any remaining "|" separators between TITLE and CONTENT
+    corpus_docs_cleaned = re.sub(
+        r' \| TITLE: ',  # Replace " | TITLE: " with "\nTITLE: "
+        '\nTITLE: ',
+        corpus_docs_cleaned
+    )
+    corpus_docs_cleaned = re.sub(
+        r' \| CONTENT: ',  # Replace " | CONTENT: " with "\nCONTENT: "
+        '\nCONTENT: ',
+        corpus_docs_cleaned
+    )
+    
+    # CRITICAL: Remove TITLE:/CONTENT: markers to match HotpotQA format exactly
+    # HotpotQA uses simple "Title: ...\n\n..." format without TITLE:/CONTENT: markers
+    # Convert "TITLE: X\nCONTENT: Y" → "Title: X\n\nY"
+    corpus_docs_cleaned = re.sub(
+        r'TITLE: (.+?)\nCONTENT: (.+?)(?=\nTITLE:|\n*$)',  # Match TITLE: ...\nCONTENT: ...
+        r'Title: \1\n\n\2',  # Replace with "Title: ...\n\n..."
+        corpus_docs_cleaned,
+        flags=re.DOTALL
+    )
+    # Handle last document if it doesn't have trailing newline
+    corpus_docs_cleaned = re.sub(
+        r'TITLE: (.+?)\nCONTENT: (.+?)$',  # Match last document
+        r'Title: \1\n\n\2',
+        corpus_docs_cleaned,
+        flags=re.DOTALL
+    )
+    # Remove any remaining TITLE: or CONTENT: markers (fallback)
+    corpus_docs_cleaned = re.sub(r'^TITLE: ', 'Title: ', corpus_docs_cleaned, flags=re.MULTILINE)
+    corpus_docs_cleaned = re.sub(r'^CONTENT: ', '', corpus_docs_cleaned, flags=re.MULTILINE)
+    
+    corpus_docs = corpus_docs_cleaned.strip()
+    
+    # Verify extraction worked
+    if "====== Example" in corpus_docs:
+        print(f"  ⚠️  ERROR: Few-shot examples still in extracted corpus_docs!")
+    if "You will be given a list of documents" in corpus_docs:
+        print(f"  ⚠️  ERROR: Corpus instructions still in extracted corpus_docs!")
+    
+    # If we couldn't extract corpus docs, fallback to using context as-is
+    # (but this shouldn't happen with proper LOFT format)
+    if not corpus_docs:
+        print(f"  ⚠️  Warning: Could not extract corpus documents, using full context")
+        corpus_docs = context.strip()
+    
+    # Format context using HotpotQA-style template
+    # HotpotQA template: "Answer the question based on the given passages. Only give me the answer and do not output any other words.\n\nThe following are given passages.\n{context}\n\nAnswer the question based on the given passages. Only give me the answer and do not output any other words.\n\n"
+    hotpotqa_context_template = (
+        "Answer the question based on the given passages. Only give me the answer and do not output any other words.\n\n"
+        "The following are given passages.\n"
+        "{corpus_docs}\n\n"
+        "Answer the question based on the given passages. Only give me the answer and do not output any other words.\n\n"
+    )
+    
+    # Format question using HotpotQA-style template
+    # HotpotQA format: "Question: {input}\n"
+    hotpotqa_question_template = "Question: {query}\n"
+    
+    # Build converted format
+    converted_context = hotpotqa_context_template.format(corpus_docs=corpus_docs)
+    converted_question = hotpotqa_question_template.format(query=query_text)
+    
+    # OPTIMIZATION: Change answer prefix from "Final Answer:" to "Answer:" to match HotpotQA exactly
+    # This improves model understanding and consistency
+    if answer_prefix == "Final Answer: " or answer_prefix == "Final Answer:":
+        answer_prefix = "Answer: "  # Match HotpotQA format exactly
+    
+    return converted_context, converted_question, answer_prefix
+
+
 def run_loft_rag_test(
-    model_name: str = "meta-llama/Llama-3.1-8B-Instruct",
+    model_name: str = "meta-llama",
     num_samples: int = 5,
     chunk_size: int = 1024,
     loft_dataset: str = "hotpotqa_32k",
@@ -115,19 +302,31 @@ def run_loft_rag_test(
         out_dir = output_dir_base
         os.makedirs(out_dir, exist_ok=True)
     else:
-        # Auto-generate output directory name
+        # Auto-generate output directory name with timestamp to avoid conflicts in parallel runs
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
         out_dir = os.path.join(
             "test_outputs",
-            f"test_loft_{loft_dataset}_{model_short}_ns{num_samples}_pcs{chunk_size}{repo_suffix}"
+            f"test_loft_{loft_dataset}_{model_short}_ns{num_samples}_pcs{chunk_size}{repo_suffix}_{timestamp}"
         )
         os.makedirs(out_dir, exist_ok=True)
     
     # Setup micro metric logger (same as test_integration.py)
+    # Metrics will only be logged when sparse attention code runs (dense doesn't call logging)
+    # Enable same metrics as HotpotQA runs: research_attention_weight_diff + research_mask_roped_vs_unroped (if flag set)
     metric_logger = MicroMetricLogger()
+    enabled_metrics: List[str] = [
+        "research_attention_weight_diff",  # Attention weight difference metrics
+    ]
+    
+    # Enable mask comparison metric if flag is set (matching test_integration.py)
+    if os.environ.get("COMPARE_MASK_ROPED_VS_UNROPED", "0").lower() in ("1", "true", "yes"):
+        enabled_metrics.append("research_mask_roped_vs_unroped")
+    
     metric_logger.configure_logging(
         log_path=out_dir,  # log_path should be directory, not file path (flush() appends "micro_metrics.jsonl")
-        enabled_metrics=["attention_mask_density", "kv_cache_size"],
+        enabled_metrics=enabled_metrics,
     )
+    print(f"[MicroMetrics] Configured logger with enabled metrics: {metric_logger.get_enabled_metrics()}")
     
     # Save test settings
     settings = {
@@ -246,41 +445,72 @@ def run_loft_rag_test(
     # Create separate responses JSONL file for real-time appending
     responses_file = os.path.join(out_dir, "responses.jsonl")
     print(f"  📝 Responses will be appended to: {responses_file}")
+    
+    # Create LLM I/O JSONL file for exact prompts and responses
+    llm_io_file = os.path.join(out_dir, "llm_io.jsonl")
+    print(f"  📝 LLM I/O (exact prompts & responses) will be appended to: {llm_io_file}")
 
     # Process samples (following exact pattern from test_integration.py)
     print("\n[3/6] Processing samples...")
     for i, row in df.iterrows():
-        context = row["context"]
-        question = row["question"]
+        # Load original LOFT format
+        original_context = row["context"]
+        original_question = row["question"]
         answer_prefix = row.get("answer_prefix", "Final Answer: ")
-        max_new_tokens = 8  # Fixed to 8 for testing
+        # Use max_new_tokens = 52 (HotpotQA default) to allow complete answers
+        max_new_tokens = 52
         task = row.get("task", loft_dataset)
         
-        # TEMPORARY: Aggressive truncation for quick testing - keep only first 5000 and last 5000 chars
-        # TODO: Remove this truncation for production runs
-        # original_len = len(context)
-        # if original_len > 100000:
-        #     keep_size = 50000  # Keep first 5000 and last 5000 chars
-        #     if original_len > keep_size * 2:
-        #         context = context[:keep_size] + "..." + context[-keep_size:]
-        #         print(f"    ⚠️  Context truncated: kept first/last {keep_size} chars (original: {original_len} chars, new: {len(context)} chars)")
-        #     else:
-        #         # If context is smaller, just truncate to max 10000 chars
-        #         context = context[:10000]
-        #         print(f"    ⚠️  Context truncated: limited to 10000 chars (original: {original_len} chars)")
+        # Convert LOFT format to simple HotpotQA-style format
+        # This improves compatibility with chat templates and model understanding
+        context, question, answer_prefix = convert_loft_to_simple_format(
+            original_context, original_question, answer_prefix
+        )
         
-        # Handle context repetition if needed
+        # Debug: Verify conversion worked
+        if "====== Example 1 ======" in context:
+            print(f"    ⚠️  WARNING: Few-shot examples still present in converted context!")
+        if "You will be given a list of documents" in context:
+            print(f"    ⚠️  WARNING: Corpus instructions still present in converted context!")
+        if "Answer the question based on the given passages" not in context:
+            print(f"    ⚠️  WARNING: HotpotQA template not found in converted context!")
+        
+        # Store original format for CSV logging (so we can see what was used)
+        original_format = {
+            "original_context": original_context,
+            "original_question": original_question,
+            "converted_context": context,
+            "converted_question": question,
+        }
+        
+        # Handle context repetition if needed (after conversion)
         if repeat_count > 1:
             context = context * repeat_count
         
         print(f"\n  Sample {i+1}/{len(df)}: {task}")
-        print(f"    Context length: {len(context)} chars")
-        print(f"    Question: {question[:80]}...")
+        print(f"    Original context length: {len(original_context)} chars")
+        print(f"    Converted context length: {len(context)} chars")
+        print(f"    Original question: {original_question[:80]}...")
+        print(f"    Converted question: {question[:80]}...")
         
         for scenario in scenarios:
             scenario_name = scenario["name"]
             adapter = scenario["adapter"]
             use_chunked = scenario["chunked"]
+            
+            # Get exact prompt that will be sent to LLM (after preprocessing)
+            # Compute this BEFORE processing so we can log it even if processing fails
+            exact_prompt_to_llm = None
+            try:
+                preprocessed_context, preprocessed_questions = adapter._preprocess_context_and_questions(
+                    context, [question] if isinstance(question, str) else question, answer_prefix
+                )
+                # The exact prompt sent to LLM is: preprocessed_context + preprocessed_question
+                exact_prompt_to_llm = preprocessed_context + (preprocessed_questions[0] if preprocessed_questions else "")
+            except Exception as prep_error:
+                # If preprocessing fails, log the error but continue
+                print(f"    ⚠️  Warning: Could not preprocess prompt: {prep_error}")
+                exact_prompt_to_llm = f"[PREPROCESSING_ERROR: {str(prep_error)}] Context: {context[:200]}... Question: {question[:200]}..."
             
             try:
                 # Create request
@@ -312,6 +542,16 @@ def run_loft_rag_test(
                 else:
                     response_text = response.responses
                 
+                # Clean chat template artifacts (remove "assistant\n\n" prefixes)
+                # Some models output chat template artifacts that need to be removed
+                response_text = response_text.strip()
+                if response_text.startswith("assistant"):
+                    # Remove "assistant" prefix and any following newlines/whitespace
+                    response_text = response_text[len("assistant"):].strip()
+                    # Remove leading newlines
+                    while response_text.startswith("\n"):
+                        response_text = response_text[1:].strip()
+                
                 # Print response in logs
                 print(f"    ✓ {scenario_name}: {elapsed:.2f}s, response length: {len(response_text)}")
                 print(f"    📤 Response: {response_text}")
@@ -328,6 +568,21 @@ def run_loft_rag_test(
                 with open(responses_file, "a") as f:
                     f.write(json.dumps(response_entry) + "\n")
                 
+                # Log exact LLM I/O (prompt sent to LLM + response received)
+                # exact_prompt_to_llm was computed before processing (line 389)
+                llm_io_entry = {
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],  # Include milliseconds
+                    "scenario": scenario_name,
+                    "tag": "dense" if not scenario.get("sparse", False) else "sparse",
+                    "sample_idx": i,
+                    "task": task,
+                    "exact_prompt_to_llm": exact_prompt_to_llm,  # Exact prompt after all preprocessing (chat template, etc.)
+                    "exact_response_from_llm": response_text,  # Exact response from LLM
+                    "elapsed_s": elapsed,
+                }
+                with open(llm_io_file, "a") as f:
+                    f.write(json.dumps(llm_io_entry) + "\n")
+                
                 # Store results
                 result = {
                     "sample_idx": i,
@@ -341,14 +596,27 @@ def run_loft_rag_test(
                 all_results[scenario_name].append(result)
                 
                 rows.append({
-                    "method": scenario_name,
-                    "sample_idx": i,
-                    "task": task,
-                    "question": question[:100],  # Truncate for CSV
-                    "response": response_text[:200],  # Truncate for CSV
+                    "context": context,  # Converted context (HotpotQA-style)
+                    "question": question,  # Converted question (HotpotQA-style)
+                    "predicted_answer": response_text,
                     "elapsed_s": elapsed,
-                    "error": None,
+                    "answers": row.get("answers", None),
+                    "task": task,
+                    "method": scenario_name,
+                    "answer_prefix": answer_prefix,
+                    # Store original LOFT format for reference
+                    "original_context": original_context,
+                    "original_question": original_question,
                 })
+                
+                # Flush metrics after each sample/scenario (matching test_integration.py)
+                if scenario.get("sparse", False):
+                    try:
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                        metric_logger.flush()
+                    except Exception:
+                        pass
                 
             except Exception as e:
                 print(f"    ✗ {scenario_name}: Error - {e}")
@@ -367,6 +635,22 @@ def run_loft_rag_test(
                 with open(responses_file, "a") as f:
                     f.write(json.dumps(error_entry) + "\n")
                 
+                # Log error in LLM I/O file as well
+                # Use exact_prompt_to_llm if we computed it, otherwise None
+                llm_io_error_entry = {
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                    "scenario": scenario_name,
+                    "tag": "dense" if not scenario.get("sparse", False) else "sparse",
+                    "sample_idx": i,
+                    "task": task,
+                    "exact_prompt_to_llm": exact_prompt_to_llm,  # May be None if preprocessing failed
+                    "exact_response_from_llm": None,
+                    "elapsed_s": None,
+                    "error": str(e),
+                }
+                with open(llm_io_file, "a") as f:
+                    f.write(json.dumps(llm_io_error_entry) + "\n")
+                
                 all_results[scenario_name].append({
                     "sample_idx": i,
                     "task": task,
@@ -377,13 +661,18 @@ def run_loft_rag_test(
                     "error": str(e),
                 })
                 rows.append({
-                    "method": scenario_name,
-                    "sample_idx": i,
-                    "task": task,
-                    "question": question[:100],
-                    "response": None,
+                    "context": context,  # Converted context (HotpotQA-style)
+                    "question": question,  # Converted question (HotpotQA-style)
+                    "predicted_answer": None,
                     "elapsed_s": None,
+                    "answers": row.get("answers", None),
+                    "task": task,
+                    "method": scenario_name,
+                    "answer_prefix": answer_prefix,
                     "error": str(e),
+                    # Store original LOFT format for reference
+                    "original_context": original_context,
+                    "original_question": original_question,
                 })
             
             # Clear cache
@@ -423,10 +712,40 @@ def run_loft_rag_test(
                 df_for_metrics["predicted_answer"] = None
                 
                 # Map responses back to original dataframe
+                # CRITICAL: Prepend answer_prefix to response for extract_prediction() to work
+                # extract_prediction() expects prefix in response (e.g., "Answer: Mazda")
+                # But model outputs just the answer (e.g., "Mazda")
                 for idx, row in df_scenario.iterrows():
                     sample_idx = row["sample_idx"]
                     if sample_idx < len(df_for_metrics):
-                        df_for_metrics.loc[df_for_metrics.index[sample_idx], "predicted_answer"] = row.get("response", "")
+                        response = str(row.get("response", "")).strip()
+                        answer_prefix = str(df_for_metrics.iloc[sample_idx].get("answer_prefix", "Answer: ")).strip()
+                        # Prepend prefix to response for proper extraction
+                        # Ensure prefix ends with space if it doesn't already
+                        if answer_prefix and not answer_prefix.endswith(" "):
+                            answer_prefix = answer_prefix + " "
+                        predicted_answer_with_prefix = answer_prefix + response
+                        df_for_metrics.loc[df_for_metrics.index[sample_idx], "predicted_answer"] = predicted_answer_with_prefix
+                
+                # Ensure answers column is in correct format (list of strings)
+                # CSV stores answers as string like "['Mazda']", need to parse
+                import ast
+                def parse_answers(val):
+                    if pd.isna(val):
+                        return []
+                    if isinstance(val, list):
+                        return [str(a) for a in val]
+                    if isinstance(val, str):
+                        try:
+                            parsed = ast.literal_eval(val)
+                            if isinstance(parsed, list):
+                                return [str(a) for a in parsed]
+                            return [str(parsed)]
+                        except:
+                            return [str(val)]
+                    return [str(val)]
+                
+                df_for_metrics["answers"] = df_for_metrics["answers"].apply(parse_answers)
                 
                 # Filter to only rows with predictions
                 df_for_metrics = df_for_metrics[df_for_metrics["predicted_answer"].notna()].copy()

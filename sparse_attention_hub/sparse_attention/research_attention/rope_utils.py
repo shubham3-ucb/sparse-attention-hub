@@ -122,6 +122,52 @@ def unapply_rotary_pos_emb_keys(
     return k_unroped
 
 
+def apply_rotary_pos_emb_queries(
+    q: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor
+) -> torch.Tensor:
+    """Apply rotary position embedding for queries only.
+
+    Args:
+        q: Query tensor of shape (batch, heads, seq_len, head_dim).
+        cos: Cosine embeddings of shape (batch, seq_len, head_dim) or (1, seq_len, head_dim).
+        sin: Sine embeddings of shape (batch, seq_len, head_dim) or (1, seq_len, head_dim).
+
+    Returns:
+        Rotated query tensor with same shape as input.
+    """
+    # Reshape cos/sin to match q: (batch, seq_len, head_dim) -> (batch, 1, seq_len, head_dim)
+    # q is (batch, heads, seq_len, head_dim)
+    if cos.dim() == 3:
+        cos = cos.unsqueeze(1)  # (batch, 1, seq_len, head_dim)
+        sin = sin.unsqueeze(1)  # (batch, 1, seq_len, head_dim)
+    # Forward RoPE: x_rot = x * cos + rotate_half(x) * sin
+    q_roped: torch.Tensor = (q * cos) + (rotate_half(q) * sin)
+    return q_roped
+
+
+def apply_rotary_pos_emb_keys(
+    k: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor
+) -> torch.Tensor:
+    """Apply rotary position embedding for keys only.
+
+    Args:
+        k: Key tensor of shape (batch, heads, seq_len, head_dim).
+        cos: Cosine embeddings of shape (batch, seq_len, head_dim) or (1, seq_len, head_dim).
+        sin: Sine embeddings of shape (batch, seq_len, head_dim) or (1, seq_len, head_dim).
+
+    Returns:
+        Rotated key tensor with same shape as input.
+    """
+    # Reshape cos/sin to match k: (batch, seq_len, head_dim) -> (batch, 1, seq_len, head_dim)
+    # k is (batch, heads, seq_len, head_dim)
+    if cos.dim() == 3:
+        cos = cos.unsqueeze(1)  # (batch, 1, seq_len, head_dim)
+        sin = sin.unsqueeze(1)  # (batch, 1, seq_len, head_dim)
+    # Forward RoPE: x_rot = x * cos + rotate_half(x) * sin
+    k_roped: torch.Tensor = (k * cos) + (rotate_half(k) * sin)
+    return k_roped
+
+
 def compute_rope_cos_sin(
     module: nn.Module,
     position_ids: torch.Tensor,

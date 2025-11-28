@@ -278,8 +278,13 @@ SPARSE_DEBUG=1 \\
         tokenizer_kwargs["use_auth_token"] = hf_token
         model_kwargs.setdefault("trust_remote_code", True)
 
-    # Create adapters - ONLY sparse (skip dense to match old codebase pattern)
+    # Create adapters - both dense and sparse
     print("\n[2/6] Creating adapters...")
+    
+    # Create dense adapter (no sparse config)
+    adapter_dense = ModelAdapterHF(
+        model_name, None, model_kwargs=model_kwargs, tokenizer_kwargs=tokenizer_kwargs, device=device
+    )
     
     # Create sparse attention config (parameters already read above)
     sparse_cfg = ResearchAttentionConfig(
@@ -295,15 +300,23 @@ SPARSE_DEBUG=1 \\
     )
     print("✓ Adapters created")
 
-    # Test scenarios - ONLY sparse chunked (skip dense to match old codebase pattern)
+    # Test scenarios - both dense and sparse chunked
     scenarios = [
+        {"name": "dense_chunked", "adapter": adapter_dense, "chunked": True, "sparse": False},
         {"name": "sparse_chunked", "adapter": adapter_sparse, "chunked": True, "sparse": True},
     ]
 
     all_results: Dict[str, List[Dict[str, Any]]] = {s["name"]: [] for s in scenarios}
     rows: List[Dict[str, Any]] = []
-
-    print("\n[3/6] Running test scenarios...")
+    
+    # Create separate responses JSONL file for real-time appending
+    responses_file = os.path.join(out_dir, "responses.jsonl")
+    print(f"\n[3/6] Running test scenarios...")
+    print(f"  📝 Responses will be appended to: {responses_file}")
+    
+    # Create LLM I/O JSONL file for exact prompts and responses
+    llm_io_file = os.path.join(out_dir, "llm_io.jsonl")
+    print(f"  📝 LLM I/O (exact prompts & responses) will be appended to: {llm_io_file}")
     for scenario in scenarios:
         print(f"\n--- Scenario: {scenario['name']} ---")
         
@@ -351,6 +364,21 @@ SPARSE_DEBUG=1 \\
 
             req = Request(context=context, questions=question, answer_prefix=sample.get("answer_prefix", "Answer: "))
 
+            # Get exact prompt that will be sent to LLM (after preprocessing)
+            # Compute this BEFORE processing so we can log it even if processing fails
+            exact_prompt_to_llm = None
+            try:
+                adapter = scenario["adapter"]
+                preprocessed_context, preprocessed_questions = adapter._preprocess_context_and_questions(
+                    context, [question] if isinstance(question, str) else question, sample.get("answer_prefix", "Answer: ")
+                )
+                # The exact prompt sent to LLM is: preprocessed_context + preprocessed_question
+                exact_prompt_to_llm = preprocessed_context + (preprocessed_questions[0] if preprocessed_questions else "")
+            except Exception as prep_error:
+                # If preprocessing fails, log the error but continue
+                print(f"    ⚠️  Warning: Could not preprocess prompt: {prep_error}")
+                exact_prompt_to_llm = f"[PREPROCESSING_ERROR: {str(prep_error)}] Context: {context[:200]}... Question: {question[:200]}..."
+
             print(f"  Sample {i+1}/{len(ds)}: Processing...")
             t0 = time.time()
             
@@ -364,6 +392,34 @@ SPARSE_DEBUG=1 \\
                 t1 = time.time()
                 response = r.responses if isinstance(r.responses, str) else r.responses[0]
                 elapsed = t1 - t0
+                
+                # Append response to separate JSONL file immediately
+                response_entry = {
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "scenario": scenario["name"],
+                    "sample_idx": i,
+                    "question": question,
+                    "response": response,
+                    "elapsed_s": elapsed,
+                }
+                with open(responses_file, "a") as f:
+                    f.write(json.dumps(response_entry) + "\n")
+                
+                # Log exact LLM I/O (prompt sent to LLM + response received)
+                # exact_prompt_to_llm was computed before processing
+                llm_io_entry = {
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],  # Include milliseconds
+                    "scenario": scenario["name"],
+                    "tag": "dense" if not scenario.get("sparse", False) else "sparse",
+                    "sample_idx": i,
+                    "task": "hotpotqa",
+                    "repeat_count": repeat_count,  # Include repeat count for comparison
+                    "exact_prompt_to_llm": exact_prompt_to_llm,  # Exact prompt after all preprocessing (chat template, etc.)
+                    "exact_response_from_llm": response,  # Exact response from LLM
+                    "elapsed_s": elapsed,
+                }
+                with open(llm_io_file, "a") as f:
+                    f.write(json.dumps(llm_io_entry) + "\n")
                 
                 all_results[scenario["name"]].append({
                     "sample_idx": i,
@@ -396,6 +452,34 @@ SPARSE_DEBUG=1 \\
                 
             except Exception as e:
                 print(f"    ❌ Error: {e}")
+                # Append error to responses file
+                error_entry = {
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "scenario": scenario["name"],
+                    "sample_idx": i,
+                    "question": question,
+                    "response": None,
+                    "error": str(e),
+                }
+                with open(responses_file, "a") as f:
+                    f.write(json.dumps(error_entry) + "\n")
+                
+                # Log error in LLM I/O file as well
+                # Use exact_prompt_to_llm if we computed it, otherwise None
+                llm_io_error_entry = {
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                    "scenario": scenario["name"],
+                    "tag": "dense" if not scenario.get("sparse", False) else "sparse",
+                    "sample_idx": i,
+                    "task": "hotpotqa",
+                    "repeat_count": repeat_count,
+                    "exact_prompt_to_llm": exact_prompt_to_llm,  # May be None if preprocessing failed
+                    "exact_response_from_llm": None,
+                    "elapsed_s": None,
+                    "error": str(e),
+                }
+                with open(llm_io_file, "a") as f:
+                    f.write(json.dumps(llm_io_error_entry) + "\n")
                 all_results[scenario["name"]].append({
                     "sample_idx": i,
                     "response": None,

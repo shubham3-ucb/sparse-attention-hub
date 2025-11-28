@@ -2,10 +2,13 @@
 
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+from pathlib import Path
 
 import torch
 from torch import nn
 import os
+import numpy as np
+import json
 
 from sparse_attention_hub.metric_logging.logger import MicroMetricLogger
 
@@ -21,6 +24,9 @@ from .rope_utils import (
     unapply_rotary_pos_emb,
     unapply_rotary_pos_emb_queries,
     unapply_rotary_pos_emb_keys,
+    apply_rotary_pos_emb,
+    apply_rotary_pos_emb_queries,
+    apply_rotary_pos_emb_keys,
     compute_rope_cos_sin,
 )
 
@@ -43,6 +49,11 @@ class ResearchAttention(SparseAttention):
     """Base class for research attention mechanisms with maskers."""
 
     maskers: List[ResearchMasker]
+    
+    # Class-level variables for mask logging
+    _sample_idx: int = 0  # Track current sample index
+    _prev_seq_len_k: int = 0  # Track previous seq_len_k to detect new samples
+    _mask_save_dir: Optional[Path] = None  # Directory for saving masks
 
     def __init__(
         self,
@@ -70,6 +81,106 @@ class ResearchAttention(SparseAttention):
             )
 
         self.maskers = maskers
+        
+        # Initialize mask saving directory if enabled
+        if os.environ.get("SAVE_MASKS", "0").lower() in ("1", "true", "yes"):
+            self._init_mask_save_dir()
+
+    def _init_mask_save_dir(self) -> None:
+        """Initialize directory for saving masks."""
+        # Get model name from environment or use default
+        model_name: str = os.environ.get("MODEL_NAME", "unknown_model")
+        # Sanitize model name for filesystem
+        model_name_safe: str = model_name.replace("/", "_").replace("-", "_")
+        
+        # Create /data/masks/{model_name} directory
+        base_dir: Path = Path("/data/masks")
+        self._mask_save_dir = base_dir / model_name_safe
+        self._mask_save_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Reset sample tracking
+        ResearchAttention._sample_idx = 0
+        ResearchAttention._prev_seq_len_k = 0
+        
+        print(f"[MaskLogging] Initialized mask save directory: {self._mask_save_dir}")
+        print(f"[MaskLogging] Will save masks only for first sample (sample_idx=0)")
+
+    def _update_sample_idx(self, seq_len_q: int, seq_len_k: int) -> None:
+        """Update sample index based on chunk progression.
+        
+        Detects new sample when:
+        - First chunk: seq_len_q == seq_len_k (no prefix yet)
+        - Reset detected: seq_len_k decreases significantly
+        """
+        # Detect new sample: reset to first chunk (seq_q == seq_k) after generation (seq_q == 1)
+        # or significant decrease in seq_len_k
+        if (seq_len_q == seq_len_k and seq_len_q >= 100 and 
+            ResearchAttention._prev_seq_len_k > 0 and 
+            ResearchAttention._prev_seq_len_k < seq_len_k * 0.5):
+            # New sample detected
+            ResearchAttention._sample_idx += 1
+            print(f"[MaskLogging] New sample detected: sample_idx={ResearchAttention._sample_idx}")
+        
+        ResearchAttention._prev_seq_len_k = seq_len_k
+
+    def _save_mask(
+        self,
+        mask: torch.Tensor,
+        mask_type: str,  # "computed" or "roped"
+        layer_idx: int,
+        head_idx: int,
+        seq_len_q: int,
+        seq_len_k: int,
+        sample_idx: int,
+    ) -> None:
+        """Save mask to disk as numpy array.
+        
+        Args:
+            mask: Mask tensor to save (seq_len_q, seq_len_k)
+            mask_type: Type of mask ("computed" or "roped")
+            layer_idx: Layer index
+            head_idx: Head index
+            seq_len_q: Query sequence length
+            seq_len_k: Key sequence length
+            sample_idx: Sample index
+        """
+        if self._mask_save_dir is None:
+            return
+        
+        # Only save for first sample
+        if sample_idx != 0:
+            return
+        
+        # Create subdirectory: layer_{layer_idx}/head_{head_idx}/
+        layer_dir: Path = self._mask_save_dir / f"layer_{layer_idx}" / f"head_{head_idx}"
+        layer_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Filename: mask_{type}_l{layer_idx}_h{head_idx}_q{seq_len_q}_k{seq_len_k}_s{sample_idx}.npy
+        filename: str = f"mask_{mask_type}_l{layer_idx}_h{head_idx}_q{seq_len_q}_k{seq_len_k}_s{sample_idx}.npy"
+        filepath: Path = layer_dir / filename
+        
+        # Convert to numpy and save
+        # Handle BFloat16: NumPy doesn't support bfloat16, convert to float32 first
+        mask_cpu: torch.Tensor = mask.detach().cpu()
+        if mask_cpu.dtype == torch.bfloat16:
+            mask_cpu = mask_cpu.to(torch.float32)
+        mask_np: np.ndarray = mask_cpu.numpy()
+        np.save(filepath, mask_np)
+        
+        # Save metadata JSON file
+        metadata_file: Path = layer_dir / f"metadata_l{layer_idx}_h{head_idx}_q{seq_len_q}_k{seq_len_k}_s{sample_idx}.json"
+        metadata: Dict[str, Any] = {
+            "layer_idx": layer_idx,
+            "head_idx": head_idx,
+            "seq_len_q": seq_len_q,
+            "seq_len_k": seq_len_k,
+            "sample_idx": sample_idx,
+            "mask_type": mask_type,
+            "mask_shape": list(mask_np.shape),
+            "model_name": os.environ.get("MODEL_NAME", "unknown_model"),
+        }
+        with open(metadata_file, "w") as f:
+            json.dump(metadata, f, indent=2)
 
     def _prepare_unroped_qk_for_mask(
         self,
@@ -169,24 +280,97 @@ class ResearchAttention(SparseAttention):
                 if isinstance(cos, tuple) and isinstance(sin, tuple):
                     cos_queries, cos_keys = cos
                     sin_queries, sin_keys = sin
-                    queries_for_mask: torch.Tensor = unapply_rotary_pos_emb_queries(
+                    # Step 1: Unrope Q/K
+                    queries_unroped: torch.Tensor = unapply_rotary_pos_emb_queries(
                         queries, cos_queries, sin_queries
                     )
-                    keys_for_mask: torch.Tensor = unapply_rotary_pos_emb_keys(
+                    keys_unroped: torch.Tensor = unapply_rotary_pos_emb_keys(
                         keys, cos_keys, sin_keys
                     )
+                    
+                    # Step 2: Apply scaled RoPE for mask computation
+                    # Scale position IDs to [0, 8191] range for valid cos/sin computation
+                    # Keys: [0, ..., seq_len_keys-1] → [0, ..., 8191]
+                    # Queries: [min_q_pos, ..., max_q_pos] → [8191-seq_len_queries, ..., 8191]
+                    max_position_id: int = 8191
+                    
+                    # Check if scaling is needed
+                    needs_scaling: bool = False
+                    if position_ids is not None and position_ids.shape[1] == seq_len_queries:
+                        max_q_pos: int = int(position_ids[0, -1].item())
+                        needs_scaling = max_q_pos > max_position_id
+                    else:
+                        needs_scaling = seq_len_queries - 1 > max_position_id
+                    
+                    # Only scale if position IDs exceed valid range
+                    if needs_scaling and rotary_emb is not None:
+                        # Use same scale factor for both keys and queries
+                        # Keys: [0, ..., seq_len_keys-1] → [0, ..., 8191]
+                        # Queries: [seq_len_keys-seq_len_queries, ..., seq_len_keys-1] → [scaled_start, ..., 8191]
+                        if seq_len_keys > 1:
+                            scale_factor: float = max_position_id / (seq_len_keys - 1)
+                            
+                            # Scale key position IDs: [0, ..., seq_len_keys-1] → [0, ..., 8191]
+                            keys_position_ids_scaled: torch.Tensor = (
+                                torch.arange(0, seq_len_keys, device=keys.device, dtype=torch.float32) * scale_factor
+                            ).long().unsqueeze(0)
+                            
+                            # Scale query position IDs using same factor
+                            # Queries correspond to last seq_len_queries positions of keys
+                            if position_ids is not None and position_ids.shape[1] == seq_len_queries:
+                                # Use actual query position IDs from kwargs, scale them
+                                queries_position_ids_scaled: torch.Tensor = (
+                                    position_ids.float() * scale_factor
+                                ).long()
+                            else:
+                                # Fallback: queries are last seq_len_queries positions of keys
+                                query_start_pos: int = seq_len_keys - seq_len_queries
+                                queries_position_ids_scaled: torch.Tensor = (
+                                    torch.arange(query_start_pos, seq_len_keys, device=queries.device, dtype=torch.float32) * scale_factor
+                                ).long().unsqueeze(0)
+                        else:
+                            keys_position_ids_scaled: torch.Tensor = torch.zeros(1, seq_len_keys, device=keys.device, dtype=torch.long)
+                            queries_position_ids_scaled: torch.Tensor = torch.zeros(1, seq_len_queries, device=queries.device, dtype=torch.long)
+                        
+                        # Compute cos/sin with scaled position IDs
+                        dummy_x_keys_scaled: torch.Tensor = torch.zeros(
+                            1, seq_len_keys, device=keys.device, dtype=torch.float32
+                        )
+                        cos_keys_scaled, sin_keys_scaled = rotary_emb(dummy_x_keys_scaled, keys_position_ids_scaled)
+                        
+                        dummy_x_queries_scaled: torch.Tensor = torch.zeros(
+                            1, seq_len_queries, device=queries.device, dtype=torch.float32
+                        )
+                        cos_queries_scaled, sin_queries_scaled = rotary_emb(dummy_x_queries_scaled, queries_position_ids_scaled)
+                        
+                        # Apply RoPE to unroped Q/K with scaled cos/sin
+                        queries_for_mask: torch.Tensor = apply_rotary_pos_emb_queries(
+                            queries_unroped, cos_queries_scaled, sin_queries_scaled
+                        )
+                        keys_for_mask: torch.Tensor = apply_rotary_pos_emb_keys(
+                            keys_unroped, cos_keys_scaled, sin_keys_scaled
+                        )
+                    else:
+                        # No scaling needed: use unroped Q/K directly for mask computation
+                        queries_for_mask: torch.Tensor = queries_unroped
+                        keys_for_mask: torch.Tensor = keys_unroped
                 else:
-                    queries_for_mask, keys_for_mask = unapply_rotary_pos_emb(
+                    # Tuple case not used, but handle for completeness
+                    queries_unroped, keys_unroped = unapply_rotary_pos_emb(
                         queries, keys, cos, sin
                     )
+                    # For non-tuple case, use unroped Q/K directly (scaling logic would need cos/sin as tuple)
+                    queries_for_mask: torch.Tensor = queries_unroped
+                    keys_for_mask: torch.Tensor = keys_unroped
                 unroped_used = True
                 
-                q_diff: torch.Tensor = torch.abs(queries - queries_for_mask).max()
-                k_diff: torch.Tensor = torch.abs(keys - keys_for_mask).max()
-                
-                if q_diff.item() < 1e-6 and k_diff.item() < 1e-6:
-                    # Critical error - unroping failed
-                    pass  # Keep check but don't raise (matches original behavior)
+                # COMMENTED OUT: Verification check not needed when using unroped Q/K directly
+                # q_diff: torch.Tensor = torch.abs(queries - queries_for_mask).max()
+                # k_diff: torch.Tensor = torch.abs(keys - keys_for_mask).max()
+                # 
+                # if q_diff.item() < 1e-6 and k_diff.item() < 1e-6:
+                #     # Critical error - unroping failed
+                #     pass  # Keep check but don't raise (matches original behavior)
             except Exception as e:
                 raise RuntimeError(
                     f"EXTEND_CONTEXT enabled but failed to unrope Q/K at layer {layer_idx}. "
@@ -248,8 +432,8 @@ class ResearchAttention(SparseAttention):
             masker_name = getattr(masker, "__class__", type(masker)).__name__
             
             sparse_attention_mask = masker.add_mask(
-                keys=keys_for_mask,
-                queries=queries_for_mask,
+                keys=keys_for_mask,  # Use unroped keys when EXTEND_CONTEXT=1, roped otherwise
+                queries=queries_for_mask,  # Use unroped queries when EXTEND_CONTEXT=1, roped otherwise
                 values=values,
                 attention_mask=attention_mask,
                 scaling=scaling,
@@ -368,6 +552,32 @@ class ResearchAttention(SparseAttention):
                         # Extract masks for sampled head
                         mask_computed_head: torch.Tensor = mask_computed[0, sample_head_idx, :, :]  # (seq_len_q, seq_len_k)
                         mask_roped_head: torch.Tensor = mask_roped[0, sample_head_idx, :, :]  # (seq_len_q, seq_len_k)
+                        
+                        # Update sample index tracking (for mask saving)
+                        if os.environ.get("SAVE_MASKS", "0").lower() in ("1", "true", "yes"):
+                            self._update_sample_idx(seq_len_q, seq_len_k)
+                        
+                        # Save masks if enabled (only for first sample)
+                        if os.environ.get("SAVE_MASKS", "0").lower() in ("1", "true", "yes"):
+                            current_sample_idx: int = ResearchAttention._sample_idx
+                            self._save_mask(
+                                mask=mask_computed_head,
+                                mask_type="computed",
+                                layer_idx=layer_idx,
+                                head_idx=sample_head_idx,
+                                seq_len_q=seq_len_q,
+                                seq_len_k=seq_len_k,
+                                sample_idx=current_sample_idx,
+                            )
+                            self._save_mask(
+                                mask=mask_roped_head,
+                                mask_type="roped",
+                                layer_idx=layer_idx,
+                                head_idx=sample_head_idx,
+                                seq_len_q=seq_len_q,
+                                seq_len_k=seq_len_k,
+                                sample_idx=current_sample_idx,
+                            )
                         
                         # Compute comparison metrics
                         with torch.no_grad():

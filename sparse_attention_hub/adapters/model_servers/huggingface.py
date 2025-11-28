@@ -4,7 +4,7 @@ import gc
 from typing import Any, Dict, Optional, Tuple
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 from ..utils.config import ModelServerConfig
 from ..utils.exceptions import (
@@ -53,7 +53,65 @@ class ModelServerHF(ModelServer):
                 f"Loading HuggingFace model: {model_name} with kwargs: {model_kwargs}"
             )
 
-            model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
+            # Load config first to check/modify rope_scaling
+            # Use config from model_kwargs if provided, otherwise load from model_name
+            if "config" in model_kwargs:
+                config = model_kwargs["config"]
+            else:
+                config = AutoConfig.from_pretrained(model_name)
+            
+            # Apply Llama-3.1's RoPE scaling ONLY to Llama-3.1 models (not Llama-3)
+            # Llama-3 was trained with default RoPE and should NOT get Llama-3.1's scaling
+            config_modified = False
+            if hasattr(config, "model_type") and config.model_type == "llama":
+                # Check if this is Llama-3.1 (has "3.1" or "3_1" in model name)
+                is_llama31 = "3.1" in model_name or "3_1" in model_name.lower()
+                
+                if not hasattr(config, "rope_scaling") or config.rope_scaling is None:
+                    if is_llama31:
+                        # Apply Llama-3.1's rope_scaling parameters ONLY for Llama-3.1
+                        config.rope_scaling = {
+                            "rope_type": "llama3",
+                            "factor": 8.0,
+                            "low_freq_factor": 1.0,
+                            "high_freq_factor": 4.0,
+                            "original_max_position_embeddings": getattr(config, "max_position_embeddings", 8192),
+                        }
+                        config_modified = True
+                        self.logger.info(
+                            f"Applied Llama-3.1 RoPE scaling to {model_name} "
+                            f"(rope_type=llama3, factor=8.0)"
+                        )
+                    else:
+                        # Llama-3 and other Llama models: keep default (no scaling)
+                        self.logger.info(
+                            f"Keeping default RoPE for {model_name} (not Llama-3.1)"
+                        )
+                elif isinstance(config.rope_scaling, dict):
+                    rope_type = config.rope_scaling.get("rope_type", config.rope_scaling.get("type", "default"))
+                    if rope_type == "default" and is_llama31:
+                        # Upgrade default to llama3 scaling ONLY for Llama-3.1
+                        config.rope_scaling = {
+                            "rope_type": "llama3",
+                            "factor": 8.0,
+                            "low_freq_factor": 1.0,
+                            "high_freq_factor": 4.0,
+                            "original_max_position_embeddings": getattr(config, "max_position_embeddings", 8192),
+                        }
+                        config_modified = True
+                        self.logger.info(
+                            f"Upgraded RoPE scaling to Llama-3.1 format for {model_name}"
+                        )
+                    elif rope_type == "default" and not is_llama31:
+                        # Llama-3: keep default RoPE (don't change it!)
+                        self.logger.info(
+                            f"Keeping default RoPE for {model_name} (Llama-3 should use default, not llama3 scaling)"
+                        )
+            
+            # Ensure config is passed to from_pretrained
+            model_kwargs_with_config = {**model_kwargs, "config": config}
+
+            model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs_with_config)
 
             # Handle device placement
             if gpu_id is not None:
