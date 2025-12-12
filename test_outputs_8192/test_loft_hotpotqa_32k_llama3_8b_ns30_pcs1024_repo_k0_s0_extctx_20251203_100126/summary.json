@@ -1,0 +1,23 @@
+{
+  "test_info": {
+    "model_name": "meta-llama/Meta-Llama-3-8B-Instruct",
+    "num_samples": 30,
+    "chunk_size": 1024,
+    "loft_dataset": "hotpotqa_32k",
+    "test_date": "2025-12-03 12:07:09"
+  },
+  "scenarios": {
+    "dense": {
+      "successful": 30,
+      "failed": 0,
+      "avg_elapsed_s": 12.89,
+      "metrics": {}
+    },
+    "sparse_chunked": {
+      "successful": 30,
+      "failed": 0,
+      "avg_elapsed_s": 237.66,
+      "metrics": {}
+    }
+  }
+}

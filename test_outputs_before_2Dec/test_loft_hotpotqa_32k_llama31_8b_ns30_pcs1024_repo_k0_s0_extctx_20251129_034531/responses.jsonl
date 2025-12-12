@@ -1,0 +1,60 @@
+{"timestamp": "2025-11-29 03:45:51", "scenario": "dense", "sample_idx": 0, "task": "hotpotqa_32k", "response": "Mazda", "elapsed_s": 12.49206280708313}
+{"timestamp": "2025-11-29 03:49:47", "scenario": "sparse_chunked", "sample_idx": 0, "task": "hotpotqa_32k", "response": "Mazda", "elapsed_s": 236.26788330078125}
+{"timestamp": "2025-11-29 03:49:59", "scenario": "dense", "sample_idx": 1, "task": "hotpotqa_32k", "response": "2", "elapsed_s": 11.7740638256073}
+{"timestamp": "2025-11-29 03:53:53", "scenario": "sparse_chunked", "sample_idx": 1, "task": "hotpotqa_32k", "response": "2", "elapsed_s": 233.35700058937073}
+{"timestamp": "2025-11-29 03:54:04", "scenario": "dense", "sample_idx": 2, "task": "hotpotqa_32k", "response": "1978", "elapsed_s": 11.547658681869507}
+{"timestamp": "2025-11-29 03:58:07", "scenario": "sparse_chunked", "sample_idx": 2, "task": "hotpotqa_32k", "response": "Hot Lead and Cold Feet", "elapsed_s": 242.2544345855713}
+{"timestamp": "2025-11-29 03:58:18", "scenario": "dense", "sample_idx": 3, "task": "hotpotqa_32k", "response": "Eddie Albert", "elapsed_s": 11.531795501708984}
+{"timestamp": "2025-11-29 04:02:17", "scenario": "sparse_chunked", "sample_idx": 3, "task": "hotpotqa_32k", "response": "Eddie Albert", "elapsed_s": 238.75690960884094}
+{"timestamp": "2025-11-29 04:02:27", "scenario": "dense", "sample_idx": 4, "task": "hotpotqa_32k", "response": "No", "elapsed_s": 10.297288656234741}
+{"timestamp": "2025-11-29 04:06:26", "scenario": "sparse_chunked", "sample_idx": 4, "task": "hotpotqa_32k", "response": "No", "elapsed_s": 236.53152561187744}
+{"timestamp": "2025-11-29 04:06:38", "scenario": "dense", "sample_idx": 5, "task": "hotpotqa_32k", "response": "5 to 10 species", "elapsed_s": 12.060402870178223}
+{"timestamp": "2025-11-29 04:10:37", "scenario": "sparse_chunked", "sample_idx": 5, "task": "hotpotqa_32k", "response": "Osmunda", "elapsed_s": 239.0162444114685}
+{"timestamp": "2025-11-29 04:10:48", "scenario": "dense", "sample_idx": 6, "task": "hotpotqa_32k", "response": "9P", "elapsed_s": 11.095227718353271}
+{"timestamp": "2025-11-29 04:14:42", "scenario": "sparse_chunked", "sample_idx": 6, "task": "hotpotqa_32k", "response": "9P", "elapsed_s": 233.73957991600037}
+{"timestamp": "2025-11-29 04:14:54", "scenario": "dense", "sample_idx": 7, "task": "hotpotqa_32k", "response": "Sunday", "elapsed_s": 12.483432531356812}
+{"timestamp": "2025-11-29 04:19:07", "scenario": "sparse_chunked", "sample_idx": 7, "task": "hotpotqa_32k", "response": "September 21, 2014", "elapsed_s": 252.40010905265808}
+{"timestamp": "2025-11-29 04:19:18", "scenario": "dense", "sample_idx": 8, "task": "hotpotqa_32k", "response": "Brent Burns", "elapsed_s": 11.558837413787842}
+{"timestamp": "2025-11-29 04:23:14", "scenario": "sparse_chunked", "sample_idx": 8, "task": "hotpotqa_32k", "response": "Brent Burns", "elapsed_s": 235.69519019126892}
+{"timestamp": "2025-11-29 04:23:26", "scenario": "dense", "sample_idx": 9, "task": "hotpotqa_32k", "response": "Orange", "elapsed_s": 11.717076539993286}
+{"timestamp": "2025-11-29 04:27:27", "scenario": "sparse_chunked", "sample_idx": 9, "task": "hotpotqa_32k", "response": "Orange", "elapsed_s": 241.14124727249146}
+{"timestamp": "2025-11-29 04:27:39", "scenario": "dense", "sample_idx": 10, "task": "hotpotqa_32k", "response": "Dan Bilzerian", "elapsed_s": 12.360016822814941}
+{"timestamp": "2025-11-29 04:31:43", "scenario": "sparse_chunked", "sample_idx": 10, "task": "hotpotqa_32k", "response": "Dan Bilzerian", "elapsed_s": 243.74165034294128}
+{"timestamp": "2025-11-29 04:31:55", "scenario": "dense", "sample_idx": 11, "task": "hotpotqa_32k", "response": "Laura's Star", "elapsed_s": 12.334981918334961}
+{"timestamp": "2025-11-29 04:35:54", "scenario": "sparse_chunked", "sample_idx": 11, "task": "hotpotqa_32k", "response": "Laura's Star", "elapsed_s": 238.97930431365967}
+{"timestamp": "2025-11-29 04:36:06", "scenario": "dense", "sample_idx": 12, "task": "hotpotqa_32k", "response": "2000", "elapsed_s": 11.907891273498535}
+{"timestamp": "2025-11-29 04:39:59", "scenario": "sparse_chunked", "sample_idx": 12, "task": "hotpotqa_32k", "response": "2000", "elapsed_s": 232.94016528129578}
+{"timestamp": "2025-11-29 04:40:12", "scenario": "dense", "sample_idx": 13, "task": "hotpotqa_32k", "response": "Harriet Tubman", "elapsed_s": 12.22506332397461}
+{"timestamp": "2025-11-29 04:44:12", "scenario": "sparse_chunked", "sample_idx": 13, "task": "hotpotqa_32k", "response": "Harriet Tubman", "elapsed_s": 240.68664717674255}
+{"timestamp": "2025-11-29 04:44:24", "scenario": "dense", "sample_idx": 14, "task": "hotpotqa_32k", "response": "The English Civil War", "elapsed_s": 11.884276628494263}
+{"timestamp": "2025-11-29 04:48:32", "scenario": "sparse_chunked", "sample_idx": 14, "task": "hotpotqa_32k", "response": "The English Civil War", "elapsed_s": 247.76529264450073}
+{"timestamp": "2025-11-29 04:48:42", "scenario": "dense", "sample_idx": 15, "task": "hotpotqa_32k", "response": "Adolfo Rodr\u00edguez Sa\u00e1", "elapsed_s": 10.277368545532227}
+{"timestamp": "2025-11-29 04:52:54", "scenario": "sparse_chunked", "sample_idx": 15, "task": "hotpotqa_32k", "response": "Adolfo Rodr\u00edguez Sa\u00e1", "elapsed_s": 251.74228954315186}
+{"timestamp": "2025-11-29 04:53:06", "scenario": "dense", "sample_idx": 16, "task": "hotpotqa_32k", "response": "2009", "elapsed_s": 11.679141283035278}
+{"timestamp": "2025-11-29 04:56:59", "scenario": "sparse_chunked", "sample_idx": 16, "task": "hotpotqa_32k", "response": "1976", "elapsed_s": 233.06665658950806}
+{"timestamp": "2025-11-29 04:57:11", "scenario": "dense", "sample_idx": 17, "task": "hotpotqa_32k", "response": "Obsession", "elapsed_s": 12.53961706161499}
+{"timestamp": "2025-11-29 05:01:09", "scenario": "sparse_chunked", "sample_idx": 17, "task": "hotpotqa_32k", "response": "Obsession", "elapsed_s": 237.84346556663513}
+{"timestamp": "2025-11-29 05:01:21", "scenario": "dense", "sample_idx": 18, "task": "hotpotqa_32k", "response": "Eli Roth", "elapsed_s": 11.63640284538269}
+{"timestamp": "2025-11-29 05:05:15", "scenario": "sparse_chunked", "sample_idx": 18, "task": "hotpotqa_32k", "response": "Eli Roth", "elapsed_s": 234.2682626247406}
+{"timestamp": "2025-11-29 05:05:27", "scenario": "dense", "sample_idx": 19, "task": "hotpotqa_32k", "response": "Washington State", "elapsed_s": 11.9811110496521}
+{"timestamp": "2025-11-29 05:09:35", "scenario": "sparse_chunked", "sample_idx": 19, "task": "hotpotqa_32k", "response": "Washington State.", "elapsed_s": 248.13571882247925}
+{"timestamp": "2025-11-29 05:09:46", "scenario": "dense", "sample_idx": 20, "task": "hotpotqa_32k", "response": "Two Is Better Than One", "elapsed_s": 10.948631525039673}
+{"timestamp": "2025-11-29 05:13:49", "scenario": "sparse_chunked", "sample_idx": 20, "task": "hotpotqa_32k", "response": "Two Is Better Than One", "elapsed_s": 242.60236239433289}
+{"timestamp": "2025-11-29 05:14:00", "scenario": "dense", "sample_idx": 21, "task": "hotpotqa_32k", "response": "1952", "elapsed_s": 10.495643377304077}
+{"timestamp": "2025-11-29 05:18:00", "scenario": "sparse_chunked", "sample_idx": 21, "task": "hotpotqa_32k", "response": "1940", "elapsed_s": 238.98257994651794}
+{"timestamp": "2025-11-29 05:18:13", "scenario": "dense", "sample_idx": 22, "task": "hotpotqa_32k", "response": "1999 Galt\u00fcr avalanche", "elapsed_s": 10.242811679840088}
+{"timestamp": "2025-11-29 05:22:17", "scenario": "sparse_chunked", "sample_idx": 22, "task": "hotpotqa_32k", "response": "1999 Galt\u00fcr avalanche", "elapsed_s": 244.39798212051392}
+{"timestamp": "2025-11-29 05:22:28", "scenario": "dense", "sample_idx": 23, "task": "hotpotqa_32k", "response": "Ali Qushji", "elapsed_s": 10.159458875656128}
+{"timestamp": "2025-11-29 05:26:30", "scenario": "sparse_chunked", "sample_idx": 23, "task": "hotpotqa_32k", "response": "Ali Qushji", "elapsed_s": 241.86545634269714}
+{"timestamp": "2025-11-29 05:26:42", "scenario": "dense", "sample_idx": 24, "task": "hotpotqa_32k", "response": "1974", "elapsed_s": 12.233012914657593}
+{"timestamp": "2025-11-29 05:30:40", "scenario": "sparse_chunked", "sample_idx": 24, "task": "hotpotqa_32k", "response": "1974", "elapsed_s": 238.60835576057434}
+{"timestamp": "2025-11-29 05:30:52", "scenario": "dense", "sample_idx": 25, "task": "hotpotqa_32k", "response": "Manchester United", "elapsed_s": 11.345197200775146}
+{"timestamp": "2025-11-29 05:34:46", "scenario": "sparse_chunked", "sample_idx": 25, "task": "hotpotqa_32k", "response": "Manchester United", "elapsed_s": 233.8859555721283}
+{"timestamp": "2025-11-29 05:34:59", "scenario": "dense", "sample_idx": 26, "task": "hotpotqa_32k", "response": "Morgan Llywelyn", "elapsed_s": 12.809556007385254}
+{"timestamp": "2025-11-29 05:39:06", "scenario": "sparse_chunked", "sample_idx": 26, "task": "hotpotqa_32k", "response": "Morgan Llywelyn", "elapsed_s": 247.61467218399048}
+{"timestamp": "2025-11-29 05:39:17", "scenario": "dense", "sample_idx": 27, "task": "hotpotqa_32k", "response": "Ten Walls", "elapsed_s": 11.291064500808716}
+{"timestamp": "2025-11-29 05:43:14", "scenario": "sparse_chunked", "sample_idx": 27, "task": "hotpotqa_32k", "response": "Ten Walls", "elapsed_s": 236.0433065891266}
+{"timestamp": "2025-11-29 05:43:26", "scenario": "dense", "sample_idx": 28, "task": "hotpotqa_32k", "response": "Caesars Palace Grand Prix", "elapsed_s": 12.576637268066406}
+{"timestamp": "2025-11-29 05:47:38", "scenario": "sparse_chunked", "sample_idx": 28, "task": "hotpotqa_32k", "response": "Caesars Palace Grand Prix", "elapsed_s": 251.38591980934143}
+{"timestamp": "2025-11-29 05:47:49", "scenario": "dense", "sample_idx": 29, "task": "hotpotqa_32k", "response": "The Suite Life of Zack & Cody", "elapsed_s": 11.50520944595337}
+{"timestamp": "2025-11-29 05:52:03", "scenario": "sparse_chunked", "sample_idx": 29, "task": "hotpotqa_32k", "response": "The Suite Life of Zack & Cody.", "elapsed_s": 253.4077970981598}

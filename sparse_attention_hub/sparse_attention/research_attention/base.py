@@ -1,14 +1,14 @@
 """Base classes for research attention mechanisms."""
 
+import json
+import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
 import torch
 from torch import nn
-import os
-import numpy as np
-import json
 
 from sparse_attention_hub.metric_logging.logger import MicroMetricLogger
 
@@ -193,6 +193,8 @@ class ResearchAttention(SparseAttention):
     ) -> Tuple[torch.Tensor, torch.Tensor, bool]:
         """Prepare unroped Q/K for mask computation if EXTEND_CONTEXT is enabled.
         
+        Uses linear position scaling for mask computation only.
+        
         Returns:
             Tuple of (queries_for_mask, keys_for_mask, unroped_used)
         """
@@ -292,7 +294,8 @@ class ResearchAttention(SparseAttention):
                     # Scale position IDs to [0, 8191] range for valid cos/sin computation
                     # Keys: [0, ..., seq_len_keys-1] → [0, ..., 8191]
                     # Queries: [min_q_pos, ..., max_q_pos] → [8191-seq_len_queries, ..., 8191]
-                    max_position_id: int = 8191
+                    # max_position_id: int = 8191  # Original value - commented for half-length testing
+                    max_position_id: int = 4095  # Half-length testing: 8191 / 2 = 4095
                     
                     # Check if scaling is needed
                     needs_scaling: bool = False
@@ -304,9 +307,9 @@ class ResearchAttention(SparseAttention):
                     
                     # Only scale if position IDs exceed valid range
                     if needs_scaling and rotary_emb is not None:
-                        # Use same scale factor for both keys and queries
+                        # Use linear scaling: scale position IDs to [0, 8191] range
                         # Keys: [0, ..., seq_len_keys-1] → [0, ..., 8191]
-                        # Queries: [seq_len_keys-seq_len_queries, ..., seq_len_keys-1] → [scaled_start, ..., 8191]
+                        # Queries: scaled using same factor to preserve relative positions
                         if seq_len_keys > 1:
                             scale_factor: float = max_position_id / (seq_len_keys - 1)
                             
@@ -316,7 +319,6 @@ class ResearchAttention(SparseAttention):
                             ).long().unsqueeze(0)
                             
                             # Scale query position IDs using same factor
-                            # Queries correspond to last seq_len_queries positions of keys
                             if position_ids is not None and position_ids.shape[1] == seq_len_queries:
                                 # Use actual query position IDs from kwargs, scale them
                                 queries_position_ids_scaled: torch.Tensor = (
@@ -324,15 +326,16 @@ class ResearchAttention(SparseAttention):
                                 ).long()
                             else:
                                 # Fallback: queries are last seq_len_queries positions of keys
-                                query_start_pos: int = seq_len_keys - seq_len_queries
+                                query_start_pos: int = max(0, seq_len_keys - seq_len_queries)
                                 queries_position_ids_scaled: torch.Tensor = (
                                     torch.arange(query_start_pos, seq_len_keys, device=queries.device, dtype=torch.float32) * scale_factor
                                 ).long().unsqueeze(0)
                         else:
+                            # Edge case: single key token or empty keys
                             keys_position_ids_scaled: torch.Tensor = torch.zeros(1, seq_len_keys, device=keys.device, dtype=torch.long)
                             queries_position_ids_scaled: torch.Tensor = torch.zeros(1, seq_len_queries, device=queries.device, dtype=torch.long)
                         
-                        # Compute cos/sin with scaled position IDs
+                        # Compute cos/sin with scaled position IDs (linear scaling)
                         dummy_x_keys_scaled: torch.Tensor = torch.zeros(
                             1, seq_len_keys, device=keys.device, dtype=torch.float32
                         )

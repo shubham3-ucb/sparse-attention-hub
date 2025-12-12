@@ -1,0 +1,40 @@
+sample_idx,question,golden_answer,llama3_sparse_heavy0.1,llama3_sparse_heavy0.3,llama3_sparse_heavy0.5,llama3_sparse_heavy0.7,llama31_dense,llama31_sparse
+0,What is the manufacturer of the car used by the Ford CD2 platform's design inspiration?,Mazda,Mazda,Mazda,Mazda,Mazda,Mazda,Mazda
+1,"How has played in more bands, Kim Wilson or Chino Moreno?",Chino Moreno,3,3,2,2,2,2
+2,"Which was released first, The Greatest Game Ever Played or Hot Lead and Cold Feet?",Hot Lead and Cold Feet,1978,1978,1978,1978,1978,Hot Lead and Cold Feet
+3,"What actor appeared in ""Evening in Byzantium"" and was nominated for the Academy Award for Best Supporting Actor in 1973 for ""The Heartbreak Kid""?",Edward Albert Heimberger,Eddie Albert,Eddie Albert,Eddie Albert,Eddie Albert,Eddie Albert,Eddie Albert
+4,Were Scott Derrickson and Ed Wood of the same nationality?,yes,No,No,No,No,No,No
+5,"Which species is the most numerous, Podocarpus or Osmunda?",Podocarpus,Osmunda.,Osmunda.,Osmunda,Osmunda,5 to 10 species,Osmunda
+6,What word or phrase is found in both the history of Belgium and cockfighting?,cockpit,9P,9P,9P,9P,9P,9P
+7,On what day of the week did the eleventh season's finale of American Dad air?,Sunday,21,21,21,21,Sunday,"September 21, 2014"
+8,"The 2008 IIHF World Championship rosters recognized the top defenceman as which Canadian professional ice hockey defenceman, who at times has been utilized as a forward, currently playing for the San Jose Sharks of the National Hockey League (NHL)?",Brent Burns,Brent Burns,Brent Burns,Brent Burns,Brent Burns,Brent Burns,Brent Burns
+9,"What is the main flavor of both soft drinks, Solo from Norway, and Sunkist?",orange,Orange,Orange,Orange,Orange,Orange,Orange
+10,"Which American professional poker player also starred in the 2015 movie ""Extraction""?",Dan Bilzerian,Dan Bilzerian,Dan Bilzerian,Chris Moneymaker,Chris Moneymaker,Dan Bilzerian,Dan Bilzerian
+11,"Which film was released first, Laura's Star or Wonder Woman?",Laura's Star,2009,1994,2004,2004,Laura's Star,Laura's Star
+12,In what year did construction begin on the stadium where the 2013 America East Men's Lacrosse Tournament was held?,in 2000,2000,2009,2009,2009,2000,2000
+13,"What is the birth name of the woman that ""A Woman Called Moses"" is based on?",Araminta Ross,Harriet Tubman,Harriet Tubman,Harriet Tubman,Harriet Tubman,Harriet Tubman,Harriet Tubman
+14,Arundel Castle was damaged during a war between which two groups?,"Parliamentarians (""Roundheads"") and Royalists (""Cavaliers"")",1067,1066,1066,1066,The English Civil War,The English Civil War
+15,Which one of Ricardo Rodríguez Saá's relatives would become governor from 1983 to 2001?,Adolfo Rodríguez Saá,Adolfo Rodríguez Saá,Adolfo Rodríguez Saá,Adolfo Rodríguez Saá,Adolfo Rodríguez Saá,Adolfo Rodríguez Saá,Adolfo Rodríguez Saá
+16,What year did the largest convention center in the U.S. state of Georgia open?,1976,1976,2005,1976,1976,2009,1976
+17,which board game has been around longer Obsession or Battle Sheep ?,Obsession,Battle Sheep,Battle Sheep,Battle Sheep,Battle Sheep,Obsession,Obsession
+18,"Which American film director and actor famous for his role as Donny ""The Bear Jew"" Donowitz wrote the 2012 film ""The Man with the Iron Fists""?",Eli Roth,Quentin Tarantino,Quentin Tarantino,Quentin Tarantino,Quentin Tarantino,Eli Roth,Eli Roth
+19,"After coaching the red raiders to several winning seasons, where does Mike Leach currently coach at?",Washington State,Washington State Cougars,Texas Tech University,Texas Tech University,Texas Tech University,Washington State,Washington State.
+20,"What was the lead single from Boys Like Girls album on which frontman, Martin Johnson co-wrote a song with Taylor Swift? A: Love Drunk",Love Drunk,2,Love Drunk,Love Drunk,Love Drunk,Two Is Better Than One,Two Is Better Than One
+21,When did the person who claimed that Fidel Castro was killed in the 26th July Movement but was proven wrong by Herbert Matthews first serve as President of Cuba?,1940,1959,1959,1959,1959,1952,1940
+22,"Which Avalanche happened first, Rigopiano avalanche or 1999 Galtür avalanche ?",The Galtür avalanche,1999 Galtür avalanche,1999 Galtür avalanche,1999 Galtür avalanche,1999 Galtür avalanche,1999 Galtür avalanche,1999 Galtür avalanche
+23,"Which man, Ibn Tufail or Ali Qushji, is best known for the development of astronomical physics independent from natural philosophy?",Ali Qushji,Ali Qushji,Ali Qushji,Ali Qushji,Ali Qushji,Ali Qushji,Ali Qushji
+24,"When was the anthology, in which fisrt pages of The Incal"" were released, created?",December 1974,1974,1989,1989,1989,1974,1974
+25,"Which internationl football team has had a player endorse the ""Nike Hypervenom"" football boot?",England,Marcus Rashford,Marcus Rashford,None,None,Manchester United,Manchester United
+26,"Who was born first,  Morgan Llywelyn or Robert Jordan?",Morgan Llywelyn,Robert Jordan,Robert Jordan,Robert Jordan,Robert Jordan,Morgan Llywelyn,Morgan Llywelyn
+27,What Lithuanian producer is best known for a song that was one of the most popular songs in Ibiza in 2014?,Ten Walls,10,10,10,Ten Walls,Ten Walls,Ten Walls
+28,Former race car driver Jeff Wood made his CART debut at which 1983 Nissan/Datsun-sponsored race?,Caesars Palace Grand Prix,1983 Indianapolis 500.,1983 Nazareth,1983 Nazareth,1983 Nazareth.,Caesars Palace Grand Prix,Caesars Palace Grand Prix
+29,Candace Flynn was voiced by the actress who achieved mainstream success on what show?,The Suite Life of Zack & Cody,Ellie Kemper,Glee,2,Phineas and Ferb,The Suite Life of Zack & Cody,The Suite Life of Zack & Cody.
+,=== METRICS SUMMARY ===,,,,,,,
+,Exact Match (EM),1.0000 (30/30),0.2333 (7/30),0.2333 (7/30),0.2333 (7/30),0.2667 (8/30),0.5000 (15/30),0.5667 (17/30)
+,Subspan EM,1.0000 (30/30),0.3000 (9/30),0.2667 (8/30),0.2667 (8/30),0.3000 (9/30),0.5333 (16/30),0.6000 (18/30)
+,,,,,,,,
+,=== METRIC EXPLANATION ===,,,,,,,
+,Exact Match (EM):,"Checks if normalized predicted answer exactly matches any normalized gold answer. Returns 1.0 if match, 0.0 otherwise.",,,,,,
+,Subspan EM:,"Checks if normalized gold answer appears as a substring in normalized predicted answer. Returns 1.0 if found, 0.0 otherwise.",,,,,,
+,Normalization:,"Both answers are normalized: Unicode NFD, remove articles (a/an/the), remove punctuation, lowercase, fix whitespace.",,,,,,
+,Note:,Metrics computed using LOFT's exact evaluation functions (from SQuAD evaluation).,,,,,,

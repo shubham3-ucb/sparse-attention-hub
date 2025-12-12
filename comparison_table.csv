@@ -1,0 +1,31 @@
+sample_idx,question,ground_truth,llama3_linear,llama3_linear_correct,llama3_freqaware,llama3_freqaware_correct,llama31,llama31_correct
+0,What is the manufacturer of the car used by the Ford CD2 platform's design inspiration?,Mazda,Mazda,CORRECT,Mazda,CORRECT,Mazda,CORRECT
+1,"How has played in more bands, Kim Wilson or Chino Moreno?",Chino Moreno,3,WRONG,2,WRONG,2,WRONG
+2,"Which was released first, The Greatest Game Ever Played or Hot Lead and Cold Feet?",Hot Lead and Cold Feet,1978,WRONG,1978,WRONG,Hot Lead and Cold Feet,CORRECT
+3,"What actor appeared in ""Evening in Byzantium"" and was nominated for the Academy Award for Best Supporting Actor in 1973 for ""The Heartbreak Kid""?",Edward Albert Heimberger,Eddie Albert,WRONG,Eddie Albert,WRONG,Eddie Albert,WRONG
+4,Were Scott Derrickson and Ed Wood of the same nationality?,yes,No,WRONG,0,WRONG,No,WRONG
+5,"Which species is the most numerous, Podocarpus or Osmunda?",Podocarpus,Osmunda.,WRONG,Osmunda,WRONG,Osmunda,WRONG
+6,What word or phrase is found in both the history of Belgium and cockfighting?,cockpit,9P,WRONG,78,WRONG,9P,WRONG
+7,On what day of the week did the eleventh season's finale of American Dad air?,Sunday,21,WRONG,21,WRONG,"September 21, 2014",WRONG
+8,"The 2008 IIHF World Championship rosters recognized the top defenceman as which Canadian professional ice hockey defenceman, who at times has been utilized as a forward, currently playing for the San Jose Sharks of the National Hockey League (NHL)?",Brent Burns,Brent Burns,CORRECT,Brent Burns,CORRECT,Brent Burns,CORRECT
+9,"What is the main flavor of both soft drinks, Solo from Norway, and Sunkist?",orange,Orange,CORRECT,Orange,CORRECT,Orange,CORRECT
+10,"Which American professional poker player also starred in the 2015 movie ""Extraction""?",Dan Bilzerian,Dan Bilzerian,CORRECT,50,WRONG,Dan Bilzerian,CORRECT
+11,"Which film was released first, Laura's Star or Wonder Woman?",Laura's Star,2009,WRONG,2004,WRONG,Laura's Star,CORRECT
+12,In what year did construction begin on the stadium where the 2013 America East Men's Lacrosse Tournament was held?,in 2000,2000,CORRECT,2004,WRONG,2000,CORRECT
+13,"What is the birth name of the woman that ""A Woman Called Moses"" is based on?",Araminta Ross,Harriet Tubman,WRONG,Moses.,WRONG,Harriet Tubman,WRONG
+14,Arundel Castle was damaged during a war between which two groups?,"Parliamentarians (""Roundheads"") and Royalists (""Cavaliers"")",1067,WRONG,1642,WRONG,The English Civil War,WRONG
+15,Which one of Ricardo Rodríguez Saá's relatives would become governor from 1983 to 2001?,Adolfo Rodríguez Saá,Adolfo Rodríguez Saá,CORRECT,Fulgencio Batista,WRONG,Adolfo Rodríguez Saá,CORRECT
+16,What year did the largest convention center in the U.S. state of Georgia open?,1976,1976,CORRECT,1976,CORRECT,1976,CORRECT
+17,which board game has been around longer Obsession or Battle Sheep ?,Obsession,Battle Sheep,WRONG,9,WRONG,Obsession,CORRECT
+18,"Which American film director and actor famous for his role as Donny ""The Bear Jew"" Donowitz wrote the 2012 film ""The Man with the Iron Fists""?",Eli Roth,Quentin Tarantino,WRONG,Quentin Tarantino,WRONG,Eli Roth,CORRECT
+19,"After coaching the red raiders to several winning seasons, where does Mike Leach currently coach at?",Washington State,Washington State Cougars,CORRECT,Mississippi State University,WRONG,Washington State.,CORRECT
+20,"What was the lead single from Boys Like Girls album on which frontman, Martin Johnson co-wrote a song with Taylor Swift? A: Love Drunk",Love Drunk,2,WRONG,2,WRONG,Two Is Better Than One,WRONG
+21,When did the person who claimed that Fidel Castro was killed in the 26th July Movement but was proven wrong by Herbert Matthews first serve as President of Cuba?,1940,1959,WRONG,1959,WRONG,1940,CORRECT
+22,"Which Avalanche happened first, Rigopiano avalanche or 1999 Galtür avalanche ?",The Galtür avalanche,1999 Galtür avalanche,WRONG,1999 Galtür avalanche,WRONG,1999 Galtür avalanche,WRONG
+23,"Which man, Ibn Tufail or Ali Qushji, is best known for the development of astronomical physics independent from natural philosophy?",Ali Qushji,Ali Qushji,CORRECT,Ali Qushji,CORRECT,Ali Qushji,CORRECT
+24,"When was the anthology, in which fisrt pages of The Incal"" were released, created?",December 1974,1974,CORRECT,1980,WRONG,1974,CORRECT
+25,"Which internationl football team has had a player endorse the ""Nike Hypervenom"" football boot?",England,Marcus Rashford,WRONG,None,WRONG,Manchester United,WRONG
+26,"Who was born first,  Morgan Llywelyn or Robert Jordan?",Morgan Llywelyn,Robert Jordan,WRONG,,WRONG,,WRONG
+27,What Lithuanian producer is best known for a song that was one of the most popular songs in Ibiza in 2014?,Ten Walls,10,WRONG,,WRONG,,WRONG
+28,Former race car driver Jeff Wood made his CART debut at which 1983 Nissan/Datsun-sponsored race?,Caesars Palace Grand Prix,1983 Indianapolis 500.,WRONG,,WRONG,,WRONG
+29,Candace Flynn was voiced by the actress who achieved mainstream success on what show?,The Suite Life of Zack & Cody,Ellie Kemper,WRONG,,WRONG,,WRONG

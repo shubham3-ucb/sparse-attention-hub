@@ -1,0 +1,20 @@
+{
+  "model_name": "meta-llama/Meta-Llama-3-8B-Instruct",
+  "num_samples": 30,
+  "chunk_size": 1024,
+  "loft_dataset": "hotpotqa_32k",
+  "loft_dataset_name": "hotpotqa",
+  "loft_length": "32k",
+  "sparse_attention": {
+    "heavy_size": 0.7,
+    "sink_size": 128,
+    "local_window": 256
+  },
+  "repositioning": {
+    "enabled": true,
+    "num_sink_tokens": 0,
+    "prefix_freeze_tail_k": 0,
+    "extend_context": true
+  },
+  "repeat_count": 1
+}

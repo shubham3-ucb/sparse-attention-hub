@@ -28,7 +28,8 @@ DEFAULT_PREFIX_SCALE_ALPHA: float = 1.0
 DEFAULT_USE_TWO_BAND_PREFIX_SCALING: bool = True
 DEFAULT_PACK_K_CHUNK_TRANSLATION: bool = True
 # Hard cap for position IDs (inclusive). Enforce ALWAYS; fatal on violation.
-DEFAULT_MAX_POSITION_ID: int = 8192
+# DEFAULT_MAX_POSITION_ID: int = 8192  # Original value - commented for half-length testing
+DEFAULT_MAX_POSITION_ID: int = 4096  # Half-length testing: 8192 / 2 = 4096
 
 
 def _scale_prefix_positions(

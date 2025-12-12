@@ -4,7 +4,7 @@ set -euo pipefail
 
 export MODEL_NAME="meta-llama/Llama-3.1-8B-Instruct"
 export NUM_SAMPLES=30
-export PREFILL_CHUNK_SIZE=512
+export PREFILL_CHUNK_SIZE=1024
 
 # Sparse attention parameters
 export ORACLE_TOPK_HEAVY_SIZE=0.10

@@ -10,7 +10,7 @@ export LOFT_DATASET="hotpotqa_32k"
 # Sparse attention parameters
 export ORACLE_TOPK_HEAVY_SIZE=0.10
 export SINK_SIZE=128
-export LOCAL_WINDOW_SIZE=128
+export LOCAL_WINDOW_SIZE=256
 
 # Repositioning parameters - K=0, S=0 (full repositioning)
 export ENABLE_POSITION_REASSIGNMENT=1
